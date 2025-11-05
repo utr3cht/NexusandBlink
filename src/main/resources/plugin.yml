@@ -1,0 +1,12 @@
+name: AnnihilationNexus
+version: 1.0-SNAPSHOT
+main: com.example.annihilationnexus.AnnihilationNexus
+api-version: '1.21'
+authors: [Gemini]
+description: A Nexus plugin for the Annihilation game mode.
+commands:
+  anni:
+    description: Base command for Annihilation Nexus plugin.
+    usage: /<command> <subcommand>
+    permission: annihilationnexus.admin
+    permission-message: You do not have permission to use this command.
