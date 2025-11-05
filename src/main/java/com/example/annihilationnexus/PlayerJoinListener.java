@@ -19,13 +19,6 @@ public class PlayerJoinListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         scoreboardManager.updateScoreboard(player);
-
-        // Check for and activate persistent class
-        PlayerClassManager classManager = plugin.getPlayerClassManager();
-        String className = classManager.getPlayerClass(player.getUniqueId());
-        if (className != null) {
-            // Re-set the class to activate any abilities (like Dasher)
-            classManager.setPlayerClass(player, className);
-        }
+        plugin.getPlayerClassManager().addPlayer(player);
     }
 }

@@ -4,12 +4,16 @@ import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.util.Vector;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.BlockIterator;
 
 public class DasherAbility {
 
@@ -39,43 +43,38 @@ public class DasherAbility {
         visualizerTask = new BukkitRunnable() {
             @Override
             public void run() {
-                Block targetBlock = player.getTargetBlock(null, MAX_BLINK_DISTANCE);
-                Location targetLocation = targetBlock.getLocation();
-                double distance = player.getLocation().distance(targetLocation);
+                // Self-termination check
+                if (!player.isSneaking() || !plugin.isBlinkItem(player.getInventory().getItemInMainHand())) {
+                    stopVisualizer();
+                    return;
+                }
 
-                if (distance >= MIN_BLINK_DISTANCE) {
-                    Location safeLocation = findSafeLocation(targetLocation);
-                    if (safeLocation != null) {
-                        Location newLiveTargetLocation = safeLocation.clone().add(0.5, 0, 0.5);
+                Location newTarget = calculateTeleportLocation();
 
-                        // Only update block if target location has changed
-                        if (liveTargetLocation == null || !liveTargetLocation.equals(newLiveTargetLocation)) {
-                            revertVisualizedBlock(); // Revert old block
+                // Only update block if target location has changed
+                if (newTarget != null && (liveTargetLocation == null || !liveTargetLocation.equals(newTarget))) {
+                    revertVisualizedBlock(); // Revert old block
 
-                            liveTargetLocation = newLiveTargetLocation;
-                            
-                            // Determine visualizer block material based on distance
-                            Material visualizerMaterial;
-                            if (distance < 10) {
-                                visualizerMaterial = Material.GREEN_STAINED_GLASS;
-                            } else if (distance < 15) {
-                                visualizerMaterial = Material.YELLOW_STAINED_GLASS;
-                            } else {
-                                visualizerMaterial = Material.RED_STAINED_GLASS;
-                            }
+                    liveTargetLocation = newTarget;
 
-                            visualizedBlock = liveTargetLocation.getBlock().getRelative(0, -1, 0); // Place block one below player's feet
-                            originalMaterial = visualizedBlock.getType();
-                            originalBlockData = visualizedBlock.getBlockData();
-
-                            // Set temporary block
-                            visualizedBlock.setType(visualizerMaterial);
-                        }
+                    // Determine visualizer block material based on distance
+                    double distance = player.getLocation().distance(liveTargetLocation);
+                    Material visualizerMaterial;
+                    if (distance <= 10) {
+                        visualizerMaterial = Material.EMERALD_BLOCK;
+                    } else if (distance <= 15) {
+                        visualizerMaterial = Material.GOLD_BLOCK;
                     } else {
-                        revertVisualizedBlock();
-                        liveTargetLocation = null;
+                        visualizerMaterial = Material.DIAMOND_BLOCK;
                     }
-                } else {
+
+                    visualizedBlock = liveTargetLocation.getBlock().getRelative(0, -1, 0);
+                    originalMaterial = visualizedBlock.getType();
+                    originalBlockData = visualizedBlock.getBlockData();
+
+                    // Set temporary block using packets
+                    player.sendBlockChange(visualizedBlock.getLocation(), visualizerMaterial.createBlockData());
+                } else if (newTarget == null) {
                     revertVisualizedBlock();
                     liveTargetLocation = null;
                 }
@@ -93,27 +92,96 @@ public class DasherAbility {
     }
 
     public double blink() {
-        if (liveTargetLocation == null) {
+        Location targetLocation = calculateTeleportLocation();
+
+        if (targetLocation == null) {
             player.sendMessage("Cannot find a safe location to blink to.");
             return 0;
         }
 
-        double distance = player.getLocation().distance(liveTargetLocation);
-        revertVisualizedBlock(); // Revert block immediately before teleporting
+        double distance = player.getLocation().distance(targetLocation);
+
+        Location originalLocation = player.getLocation();
 
         // Preserve player's facing direction
-        liveTargetLocation.setYaw(player.getLocation().getYaw());
-        liveTargetLocation.setPitch(player.getLocation().getPitch());
+        targetLocation.setYaw(player.getLocation().getYaw());
+        targetLocation.setPitch(player.getLocation().getPitch());
 
-        player.teleport(liveTargetLocation);
+        player.teleport(targetLocation);
         player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
+
+        // Spawn particles
+        spawnBlinkTrail(originalLocation, targetLocation);
+        spawnDestinationCircle(targetLocation);
+
         return distance;
     }
 
+    private Location calculateTeleportLocation() {
+        BlockIterator iterator = new BlockIterator(player.getEyeLocation(), 0, MAX_BLINK_DISTANCE);
+        Block targetBlock = null;
+        while (iterator.hasNext()) {
+            Block block = iterator.next();
+            if (block.getType().isSolid()) {
+                targetBlock = block;
+                break;
+            }
+        }
+
+        if (targetBlock == null) {
+            return null;
+        }
+
+        Location targetLocation = targetBlock.getLocation();
+        double distance = player.getLocation().distance(targetLocation);
+
+        if (distance >= MIN_BLINK_DISTANCE) {
+            Location safeLocation = findSafeLocation(targetLocation);
+            if (safeLocation != null) {
+                return safeLocation.clone().add(0.5, 0, 0.5);
+            }
+        }
+        return null;
+    }
+
+    private void spawnBlinkTrail(Location start, Location end) {
+        World world = start.getWorld();
+        if (world == null) return;
+
+        double distance = start.distance(end);
+        Vector direction = end.toVector().subtract(start.toVector()).normalize();
+        double step = 0.25;
+
+        for (double d = 0; d < distance; d += step) {
+            Location particleLoc = start.clone().add(direction.clone().multiply(d));
+            world.spawnParticle(Particle.CLOUD, particleLoc, 1, 0, 0, 0, 0);
+        }
+    }
+
+    private void spawnDestinationCircle(Location center) {
+        World world = center.getWorld();
+        if (world == null) return;
+
+        double radius = 0.75;
+        int points = 20;
+
+        for (int i = 0; i < points; i++) {
+            double angle = 2 * Math.PI * i / points;
+            double x = radius * Math.cos(angle);
+            double z = radius * Math.sin(angle);
+
+            Location particleLoc = center.clone().add(x, 0.1, z);
+            world.spawnParticle(Particle.END_ROD, particleLoc, 1, 0, 0, 0, 0);
+
+            // Falling particles
+            Location fallingParticleLoc = center.clone().add(x, 1.5, z);
+            world.spawnParticle(Particle.SPIT, fallingParticleLoc, 1, 0, 0, 0, 0);
+        }
+    }
+
     private void revertVisualizedBlock() {
-        if (visualizedBlock != null && originalMaterial != null && originalBlockData != null) {
-            visualizedBlock.setType(originalMaterial);
-            visualizedBlock.setBlockData(originalBlockData);
+        if (visualizedBlock != null && originalBlockData != null) {
+            player.sendBlockChange(visualizedBlock.getLocation(), originalBlockData);
             visualizedBlock = null;
             originalMaterial = null;
             originalBlockData = null;

@@ -2,7 +2,14 @@ package com.example.annihilationnexus;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
 public final class AnnihilationNexus extends JavaPlugin {
 
@@ -15,10 +22,16 @@ public final class AnnihilationNexus extends JavaPlugin {
     private int nexusDestructionDelay;
     private int nexusHitDelay;
     private boolean showHealthOnHit = true; // Default to true
+    private double grapplePullStrength;
+    private double grappleDurabilityLossChance;
+    private double grappleHookSpeed;
+    private double grappleUpwardBoost;
+    private boolean grappleHookHasGravity;
 
     @Override
     public void onEnable() {
         // Load config
+        updateConfig();
         saveDefaultConfig();
         getConfig().options().copyDefaults(true);
         saveConfig();
@@ -27,6 +40,7 @@ public final class AnnihilationNexus extends JavaPlugin {
         loadXpMessage();
         loadNexusDestructionDelay();
         loadNexusHitDelay();
+        loadGrappleSettings();
 
         // Plugin startup logic
         this.nexusManager = new NexusManager(this);
@@ -42,6 +56,7 @@ public final class AnnihilationNexus extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new BlinkListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerToggleSneakListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerQuitListener(this), this);
+        getServer().getPluginManager().registerEvents(new GrappleListener(this), this);
         this.getCommand("anni").setExecutor(new NexusCommand(this, nexusManager));
         this.getCommand("anni").setTabCompleter(new NexusTabCompleter(nexusManager));
         getLogger().info("AnnihilationNexus plugin has been enabled!");
@@ -81,6 +96,14 @@ public final class AnnihilationNexus extends JavaPlugin {
         this.nexusHitDelay = getConfig().getInt("nexus-hit-delay", 20);
     }
 
+    private void loadGrappleSettings() {
+        this.grapplePullStrength = getConfig().getDouble("grapple.pull-strength-multiplier", 0.15);
+        this.grappleDurabilityLossChance = getConfig().getDouble("grapple.durability-loss-chance", 0.25);
+        this.grappleHookSpeed = getConfig().getDouble("grapple.hook-speed-multiplier", 1.0);
+        this.grappleUpwardBoost = getConfig().getDouble("grapple.upward-pull-boost", 0.1);
+        this.grappleHookHasGravity = getConfig().getBoolean("grapple.hook-has-gravity", true);
+    }
+
     public Material getNexusMaterial() {
         return nexusMaterial;
     }
@@ -99,6 +122,26 @@ public final class AnnihilationNexus extends JavaPlugin {
 
     public int getNexusHitDelay() {
         return nexusHitDelay;
+    }
+
+    public double getGrapplePullStrength() {
+        return grapplePullStrength;
+    }
+
+    public double getGrappleDurabilityLossChance() {
+        return grappleDurabilityLossChance;
+    }
+
+    public double getGrappleHookSpeed() {
+        return grappleHookSpeed;
+    }
+
+    public double getGrappleUpwardBoost() {
+        return grappleUpwardBoost;
+    }
+
+    public boolean grappleHookHasGravity() {
+        return grappleHookHasGravity;
     }
 
     public NexusManager getNexusManager() {
@@ -132,6 +175,21 @@ public final class AnnihilationNexus extends JavaPlugin {
         scoreboardManager.updateForAllPlayers();
     }
 
+    private void updateConfig() {
+        saveDefaultConfig();
+        FileConfiguration config = getConfig();
+
+        // Get the default config from the JAR
+        InputStream defaultConfigStream = getResource("config.yml");
+        if (defaultConfigStream != null) {
+            YamlConfiguration defaultConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(defaultConfigStream));
+            // Add any missing default values to the user's config
+            config.addDefaults(defaultConfig);
+            config.options().copyDefaults(true);
+            saveConfig();
+        }
+    }
+
     public org.bukkit.inventory.ItemStack getBlinkItem() {
         org.bukkit.inventory.ItemStack blinkItem = new org.bukkit.inventory.ItemStack(Material.PURPLE_DYE);
         org.bukkit.inventory.meta.ItemMeta meta = blinkItem.getItemMeta();
@@ -140,5 +198,31 @@ public final class AnnihilationNexus extends JavaPlugin {
             blinkItem.setItemMeta(meta);
         }
         return blinkItem;
+    }
+
+    public org.bukkit.inventory.ItemStack getGrappleItem() {
+        ItemStack grapple = new ItemStack(Material.FISHING_ROD);
+        ItemMeta meta = grapple.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName("§aGrapple");
+            grapple.setItemMeta(meta);
+        }
+        return grapple;
+    }
+
+    public boolean isGrappleItem(ItemStack item) {
+        if (item == null || item.getType() != Material.FISHING_ROD) {
+            return false;
+        }
+        ItemMeta meta = item.getItemMeta();
+        return meta != null && meta.hasDisplayName() && meta.getDisplayName().equals("§aGrapple");
+    }
+
+    public boolean isBlinkItem(ItemStack item) {
+        if (item == null || item.getType() != Material.PURPLE_DYE) {
+            return false;
+        }
+        ItemMeta meta = item.getItemMeta();
+        return meta != null && meta.hasDisplayName() && meta.getDisplayName().startsWith(ChatColor.LIGHT_PURPLE + "Blink");
     }
 }

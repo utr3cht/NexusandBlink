@@ -2,12 +2,15 @@ com\example\annihilationnexus\BlinkListener$1.class
 com\example\annihilationnexus\ScoreboardManager.class
 com\example\annihilationnexus\PlayerQuitListener.class
 com\example\annihilationnexus\PlayerJoinListener.class
+com\example\annihilationnexus\GrappleListener.class
 com\example\annihilationnexus\NexusTabCompleter.class
+com\example\annihilationnexus\GrappleAbility.class
 com\example\annihilationnexus\NexusCommand.class
 com\example\annihilationnexus\NexusManager.class
 com\example\annihilationnexus\BlinkListener.class
 com\example\annihilationnexus\Nexus.class
 com\example\annihilationnexus\AnnihilationNexus.class
+com\example\annihilationnexus\GrappleListener$1.class
 com\example\annihilationnexus\DasherAbility.class
 com\example\annihilationnexus\DasherAbility$1.class
 com\example\annihilationnexus\NexusListener.class

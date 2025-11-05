@@ -1,54 +1,57 @@
 package com.example.annihilationnexus;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class NexusManager {
 
     private final AnnihilationNexus plugin;
-    private final Map<String, Nexus> nexusMap = new HashMap<>();
-    private final File nexusFile;
+    private final Map<String, Nexus> nexuses = new HashMap<>();
+    private final File nexusesFile;
+    private final FileConfiguration nexusesConfig;
 
     public NexusManager(AnnihilationNexus plugin) {
         this.plugin = plugin;
-        this.nexusFile = new File(plugin.getDataFolder(), "nexuses.dat");
+        this.nexusesFile = new File(plugin.getDataFolder(), "nexuses.yml");
+        this.nexusesConfig = YamlConfiguration.loadConfiguration(nexusesFile);
     }
 
     public void createNexus(String teamName, Location location) {
-        Nexus existingNexus = nexusMap.get(teamName);
-        if (existingNexus != null) {
-            // If nexus exists, remove the old block
-            Location oldLocation = existingNexus.getLocation();
-            if (oldLocation != null) {
-                oldLocation.getBlock().setType(Material.AIR);
-            }
-            // Update its location and reset its health
-            existingNexus.setLocation(location);
-            existingNexus.setHealth(plugin.getNexusHealth());
-        } else {
-            // If nexus doesn't exist, create a new one
-            Nexus newNexus = new Nexus(teamName, location, plugin.getNexusHealth());
-            nexusMap.put(teamName, newNexus);
-        }
+        Nexus nexus = new Nexus(teamName, location, plugin.getNexusHealth());
+        nexuses.put(teamName, nexus);
+        saveNexuses();
     }
 
     public void removeNexus(String teamName) {
-        nexusMap.remove(teamName);
+        nexuses.remove(teamName);
+        nexusesConfig.set("nexuses." + teamName, null); // Remove from config
+        try {
+            nexusesConfig.save(nexusesFile);
+        } catch (IOException e) {
+            plugin.getLogger().severe("Could not save nexuses.yml!");
+            e.printStackTrace();
+        }
     }
 
     public Nexus getNexus(String teamName) {
-        return nexusMap.get(teamName);
+        return nexuses.get(teamName);
     }
 
     public Nexus getNexusAt(Location location) {
-        for (Nexus nexus : nexusMap.values()) {
-            if (nexus.getLocation() != null && nexus.getLocation().equals(location)) {
+        for (Nexus nexus : nexuses.values()) {
+            // Compare block locations, ignoring pitch/yaw
+            if (nexus.getLocation().getWorld().equals(location.getWorld()) &&
+                nexus.getLocation().getBlockX() == location.getBlockX() &&
+                nexus.getLocation().getBlockY() == location.getBlockY() &&
+                nexus.getLocation().getBlockZ() == location.getBlockZ()) {
                 return nexus;
             }
         }
@@ -56,56 +59,41 @@ public class NexusManager {
     }
 
     public Map<String, Nexus> getAllNexuses() {
-        return nexusMap;
-    }
-
-    public void saveNexuses() {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(nexusFile))) {
-            for (Nexus nexus : nexusMap.values()) {
-                Location loc = nexus.getLocation();
-                if (loc != null && loc.getWorld() != null) {
-                    String line = String.join(",",
-                            nexus.getTeamName(),
-                            loc.getWorld().getName(),
-                            String.valueOf(loc.getX()),
-                            String.valueOf(loc.getY()),
-                            String.valueOf(loc.getZ()),
-                            String.valueOf(nexus.getHealth())
-                    );
-                    writer.write(line);
-                    writer.newLine();
-                }
-            }
-        } catch (IOException e) {
-            plugin.getLogger().severe("Could not save nexuses to file: " + e.getMessage());
-        }
+        return nexuses;
     }
 
     public void loadNexuses() {
-        if (!nexusFile.exists()) {
+        if (!nexusesFile.exists()) {
             return;
         }
-        try (BufferedReader reader = new BufferedReader(new FileReader(nexusFile))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 6) {
-                    String teamName = parts[0];
-                    World world = Bukkit.getWorld(parts[1]);
-                    double x = Double.parseDouble(parts[2]);
-                    double y = Double.parseDouble(parts[3]);
-                    double z = Double.parseDouble(parts[4]);
-                    int health = Integer.parseInt(parts[5]);
-
-                    if (world != null) {
-                        Location loc = new Location(world, x, y, z);
-                        Nexus nexus = new Nexus(teamName, loc, health);
-                        nexusMap.put(teamName, nexus);
-                    }
+        FileConfiguration config = YamlConfiguration.loadConfiguration(nexusesFile);
+        ConfigurationSection nexusSection = config.getConfigurationSection("nexuses");
+        if (nexusSection != null) {
+            for (String teamName : nexusSection.getKeys(false)) {
+                Location loc = nexusSection.getLocation(teamName + ".location");
+                int health = nexusSection.getInt(teamName + ".health");
+                if (loc != null) {
+                    nexuses.put(teamName, new Nexus(teamName, loc, health));
                 }
             }
+        }
+    }
+
+    public void saveNexuses() {
+        // Clear the old nexuses section before saving to ensure a clean slate
+        nexusesConfig.set("nexuses", null);
+        ConfigurationSection nexusSection = nexusesConfig.createSection("nexuses");
+        for (Map.Entry<String, Nexus> entry : nexuses.entrySet()) {
+            String teamName = entry.getKey();
+            Nexus nexus = entry.getValue();
+            nexusSection.set(teamName + ".location", nexus.getLocation());
+            nexusSection.set(teamName + ".health", nexus.getHealth());
+        }
+        try {
+            nexusesConfig.save(nexusesFile);
         } catch (IOException e) {
-            plugin.getLogger().severe("Could not load nexuses from file: " + e.getMessage());
+            plugin.getLogger().severe("Could not save nexuses.yml!");
+            e.printStackTrace();
         }
     }
 }

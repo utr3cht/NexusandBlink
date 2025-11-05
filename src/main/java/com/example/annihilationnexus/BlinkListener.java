@@ -39,7 +39,7 @@ public class BlinkListener implements Listener {
         }
 
         ItemMeta meta = item.getItemMeta();
-        if (meta == null || !meta.hasDisplayName() || !meta.getDisplayName().equals(plugin.getBlinkItem().getItemMeta().getDisplayName())) {
+        if (meta == null || !meta.hasDisplayName() || !meta.getDisplayName().startsWith(ChatColor.LIGHT_PURPLE + "Blink")) {
             return;
         }
 
@@ -64,11 +64,17 @@ public class BlinkListener implements Listener {
             double distance = ability.blink(); // This teleports the player and returns the distance
 
             if (distance > 0) {
-                // Cooldown is equal to the distance in blocks, capped at 20 seconds.
-                long cooldownSeconds = Math.min(20, (long) distance);
+                // Cooldown is equal to the distance in blocks.
+                long cooldownSeconds = (long) distance;
+
                 long cooldownEndTime = System.currentTimeMillis() + (cooldownSeconds * 1000);
                 cooldowns.put(player.getUniqueId(), cooldownEndTime);
                 player.sendMessage("Cooldown: " + cooldownSeconds + " seconds.");
+
+                // If the player is still sneaking, restart the visualizer immediately
+                if (player.isSneaking()) {
+                    ability.startVisualizer();
+                }
 
                 // Update item name with cooldown
                 updateBlinkItemName(player, item, cooldownSeconds);
@@ -109,7 +115,7 @@ public class BlinkListener implements Listener {
             if (remainingSeconds > 0) {
                 meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Blink " + ChatColor.RED + "(" + remainingSeconds + "s)");
             } else {
-                meta.setDisplayName(plugin.getBlinkItem().getItemMeta().getDisplayName());
+                meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Blink " + ChatColor.GREEN + "READY");
             }
             itemStack.setItemMeta(meta);
             // No need to continue searching, assuming only one Blink item per player

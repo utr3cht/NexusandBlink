@@ -122,7 +122,7 @@ public class NexusCommand implements CommandExecutor {
                 return true;
             }
             String className = args[2];
-            plugin.getPlayerClassManager().setPlayerClass(target, className);
+            plugin.getPlayerClassManager().setPlayerClass(target.getUniqueId(), className);
             sender.sendMessage(target.getName() + "'s class set to " + className);
             return true;
         }
@@ -135,6 +135,13 @@ public class NexusCommand implements CommandExecutor {
             blinkItem.setItemMeta(meta);
             player.getInventory().addItem(blinkItem);
             player.sendMessage("You have received the Blink item.");
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("getgrappleitem")) {
+            Player player = (Player) sender;
+            player.getInventory().addItem(plugin.getGrappleItem());
+            player.sendMessage("You have received the Grapple item.");
             return true;
         }
 

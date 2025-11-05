@@ -1,16 +1,13 @@
-# The material to be used for the Nexus block.
-# A list of valid materials can be found here: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Material.html
 nexus-material: END_STONE
-
-# The initial health of the Nexus.
 nexus-health: 75
-
-# The message to be displayed when a player hits a nexus.
-# Use '&' for color codes.
 xp-message: "&a+12 Shotbow XP"
-
-# The delay in ticks before a nexus is destroyed after its health reaches 0.
 nexus-destruction-delay: 1
-
-# The minimum delay in ticks between a player hitting a nexus.
 nexus-hit-delay: 20
+
+# Grapple Ability Settings
+grapple:
+  pull-strength-multiplier: 0.15
+  durability-loss-chance: 0.25
+  hook-speed-multiplier: 1.0
+  upward-pull-boost: 0.1
+  hook-has-gravity: true

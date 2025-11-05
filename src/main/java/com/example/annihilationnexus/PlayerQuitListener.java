@@ -13,7 +13,6 @@ public class PlayerQuitListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         plugin.getPlayerClassManager().removePlayer(player.getUniqueId());
