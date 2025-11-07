@@ -27,6 +27,7 @@ public class NexusManager {
     public void createNexus(String teamName, Location location) {
         Nexus nexus = new Nexus(teamName, location, plugin.getNexusHealth());
         nexuses.put(teamName, nexus);
+        location.getBlock().setType(plugin.getNexusMaterial()); // Place the block in the world
         saveNexuses();
     }
 

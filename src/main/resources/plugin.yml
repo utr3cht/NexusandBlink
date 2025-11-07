@@ -13,3 +13,7 @@ commands:
     description: Nexus administration commands.
     usage: /<command> <subcommand>
     permission: annihilationnexus.admin
+  anni:
+    description: AnnihilationNexus main command.
+    usage: /<command> reload
+    permission: annihilation.admin

@@ -1,10 +1,16 @@
 package com.example.annihilationnexus;
 
+import org.bukkit.ChatColor;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
+
+import java.util.HashMap;
+import java.util.UUID;
 
 public class AssassinAbility {
 
@@ -13,6 +19,7 @@ public class AssassinAbility {
     private long lastLeapTime = -40000;
     private final long cooldown = 40000; // 40 seconds
     private boolean isLeaping = false;
+    private static final HashMap<UUID, ItemStack[]> armor = new HashMap<>();
 
     public AssassinAbility(Player player, AnnihilationNexus plugin) {
         this.player = player;
@@ -28,19 +35,69 @@ public class AssassinAbility {
         lastLeapTime = System.currentTimeMillis();
         isLeaping = true;
 
+        // Save and remove armor
+        armor.put(player.getUniqueId(), player.getInventory().getArmorContents());
+        player.getInventory().setArmorContents(null);
+
         player.setVelocity(player.getLocation().getDirection().multiply(1.5).setY(1.0));
         player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 120, 0)); // 6 seconds
         player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 120, 0)); // 6 seconds
-        player.setFallDistance(-1000);
 
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_FLAP, 1, 1);
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WITHER_SHOOT, 1, 1);
 
         new BukkitRunnable() {
+            int ticks = 0;
             @Override
             public void run() {
-                isLeaping = false;
+                if (!isLeaping) {
+                    this.cancel();
+                    return;
+                }
+
+                player.setNoDamageTicks(20); // Continuously grant 1 second of invulnerability
+                player.setFallDistance(0f); // Continuously reset fall distance
+
+                if (player.isOnGround() && ticks > 5) { // Give a small buffer before ending leap
+                    isLeaping = false;
+                    player.setNoDamageTicks(0); // Remove invulnerability
+                    // Restore armor
+                    if (armor.containsKey(player.getUniqueId())) {
+                        player.getInventory().setArmorContents(armor.get(player.getUniqueId()));
+                        armor.remove(player.getUniqueId());
+                    }
+                    this.cancel();
+                }
+                ticks++;
             }
-        }.runTaskLater(plugin, 120L); // 6 seconds
+        }.runTaskTimer(plugin, 0L, 1L); // Run every tick
+    }
+
+    public long getRemainingCooldown() {
+        long timePassed = System.currentTimeMillis() - lastLeapTime;
+        if (timePassed >= cooldown) {
+            return 0;
+        }
+        return (cooldown - timePassed) / 1000;
+    }
+
+    public void updateItemLore() {
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (plugin.isAssassinItem(item)) {
+                ItemMeta meta = item.getItemMeta();
+                if (meta != null) {
+                    String baseName = ChatColor.GRAY + "Leap";
+                    long remainingCooldown = getRemainingCooldown();
+                    if (remainingCooldown > 0) {
+                        meta.setDisplayName(baseName + ChatColor.RED + " " + remainingCooldown + "s");
+                    } else {
+                        meta.setDisplayName(baseName + ChatColor.GREEN + " READY");
+                    }
+                    meta.setLore(null); // Clear lore
+                    item.setItemMeta(meta);
+                }
+            }
+        }
     }
 
     public void reduceCooldown() {

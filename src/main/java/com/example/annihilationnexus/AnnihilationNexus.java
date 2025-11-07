@@ -7,47 +7,32 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.Bukkit;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
-public final class AnnihilationNexus extends JavaPlugin {
+public final class AnnihilationNexus extends JavaPlugin implements Listener {
 
     private NexusManager nexusManager;
     private ScoreboardManager scoreboardManager;
     private PlayerClassManager playerClassManager;
-    private Material nexusMaterial;
-    private int nexusHealth;
-    private String xpMessage;
-    private int nexusDestructionDelay;
-    private int nexusHitDelay;
-    private boolean showHealthOnHit = true; // Default to true
-    private double grapplePullStrength;
-    private double grappleDurabilityLossChance;
-    private double grappleHookSpeed;
-    private double grappleUpwardBoost;
-    private boolean grappleHookHasGravity;
-    private double launcherPadIronPower;
-    private double launcherPadDiamondPower;
-    private int scorpioHookCooldown;
-    private int scorpioEnemyPullFallImmunity;
-    private int scorpioFriendlyPullFallImmunity;
+    private final Set<UUID> noFall = ConcurrentHashMap.newKeySet();
 
     @Override
     public void onEnable() {
-        // Load config
+        // Register this class as a listener for EntityDamageEvent
+        getServer().getPluginManager().registerEvents(this, this);
+
+        // Config handling
         updateConfig();
-        saveDefaultConfig();
-        getConfig().options().copyDefaults(true);
-        saveConfig();
-        loadNexusMaterial();
-        loadNexusHealth();
-        loadXpMessage();
-        loadNexusDestructionDelay();
-        loadNexusHitDelay();
-        loadGrappleSettings();
-        loadLauncherPadSettings();
-        loadScorpioSettings();
 
         // Plugin startup logic
         this.nexusManager = new NexusManager(this);
@@ -58,8 +43,9 @@ public final class AnnihilationNexus extends JavaPlugin {
         this.nexusManager.loadNexuses();
         this.playerClassManager.loadClasses();
 
+        // Registering events and commands
         getServer().getPluginManager().registerEvents(new NexusListener(this, nexusManager), this);
-        getServer().getPluginManager().registerEvents(new PlayerJoinListener(this, scoreboardManager), this);
+        getServer().getPluginManager().registerEvents(new PlayerLifecycleListener(this, scoreboardManager), this);
         getServer().getPluginManager().registerEvents(new BlinkListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerToggleSneakListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerQuitListener(this), this);
@@ -68,10 +54,45 @@ public final class AnnihilationNexus extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new LauncherPadBreakListener(), this);
         getServer().getPluginManager().registerEvents(new ScorpioListener(this, playerClassManager), this);
         getServer().getPluginManager().registerEvents(new AssassinListener(this, playerClassManager), this);
+        getServer().getPluginManager().registerEvents(new SpyListener(this, playerClassManager), this);
         this.getCommand("class").setExecutor(new ClassCommand(playerClassManager));
         this.getCommand("class").setTabCompleter(new ClassTabCompleter(playerClassManager));
         this.getCommand("nexus").setExecutor(new NexusAdminCommand(this, nexusManager));
         this.getCommand("nexus").setTabCompleter(new NexusAdminTabCompleter(nexusManager));
+        this.getCommand("anni").setExecutor(new AnniAdminCommand(this));
+
+        // Assassin cooldown display task
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
+                    String playerClass = playerClassManager.getPlayerClass(player.getUniqueId());
+                    if (playerClass != null && playerClass.equalsIgnoreCase("assassin")) {
+                        AssassinAbility ability = playerClassManager.getAssassinAbility(player.getUniqueId());
+                        if (ability != null) {
+                            ability.updateItemLore();
+                        }
+                    }
+                }
+            }
+        }.runTaskTimer(this, 0L, 20L);
+
+        // Spy cooldown display task
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
+                    String playerClass = playerClassManager.getPlayerClass(player.getUniqueId());
+                    if (playerClass != null && playerClass.equalsIgnoreCase("spy")) {
+                        SpyAbility ability = playerClassManager.getSpyAbility(player.getUniqueId());
+                        if (ability != null) {
+                            ability.updateItemLore();
+                        }
+                    }
+                }
+            }
+        }.runTaskTimer(this, 0L, 20L);
+
         getLogger().info("AnnihilationNexus plugin has been enabled!");
     }
 
@@ -83,121 +104,73 @@ public final class AnnihilationNexus extends JavaPlugin {
         getLogger().info("AnnihilationNexus plugin has been disabled!");
     }
 
-    private void loadNexusMaterial() {
-        String materialName = getConfig().getString("nexus-material", "END_STONE");
+    public Material getNexusMaterial() {
         try {
-            this.nexusMaterial = Material.valueOf(materialName.toUpperCase());
+            return Material.valueOf(getConfig().getString("nexus-material", "END_STONE").toUpperCase());
         } catch (IllegalArgumentException e) {
-            getLogger().warning("Invalid nexus-material '" + materialName + "' in config.yml. Defaulting to END_STONE.");
-            this.nexusMaterial = Material.END_STONE;
+            getLogger().warning("Invalid nexus-material in config.yml. Defaulting to END_STONE.");
+            return Material.END_STONE;
         }
     }
 
-    private void loadNexusHealth() {
-        this.nexusHealth = getConfig().getInt("nexus-health", 75);
-    }
-
-    private void loadXpMessage() {
-        this.xpMessage = getConfig().getString("xp-message", "&a+12 Shotbow XP");
-    }
-
-    private void loadNexusDestructionDelay() {
-        this.nexusDestructionDelay = getConfig().getInt("nexus-destruction-delay", 1);
-    }
-
-    private void loadNexusHitDelay() {
-        this.nexusHitDelay = getConfig().getInt("nexus-hit-delay", 20);
-    }
-
-    private void loadGrappleSettings() {
-        this.grapplePullStrength = getConfig().getDouble("grapple.pull-strength-multiplier", 0.15);
-        this.grappleDurabilityLossChance = getConfig().getDouble("grapple.durability-loss-chance", 0.25);
-        this.grappleHookSpeed = getConfig().getDouble("grapple.hook-speed-multiplier", 1.0);
-        this.grappleUpwardBoost = getConfig().getDouble("grapple.upward-pull-boost", 0.1);
-        this.grappleHookHasGravity = getConfig().getBoolean("grapple.hook-has-gravity", true);
-    }
-
-    private void loadLauncherPadSettings() {
-        this.launcherPadIronPower = getConfig().getDouble("launcher-pad.iron-power", 2.0);
-        this.launcherPadDiamondPower = getConfig().getDouble("launcher-pad.diamond-power", 4.0);
-    }
-
-    private void loadScorpioSettings() {
-        this.scorpioHookCooldown = getConfig().getInt("scorpio.hook-cooldown", 3);
-        this.scorpioEnemyPullFallImmunity = getConfig().getInt("scorpio.enemy-pull-fall-immunity", 10);
-        this.scorpioFriendlyPullFallImmunity = getConfig().getInt("scorpio.friendly-pull-fall-immunity", 5);
-    }
-
-    public Material getNexusMaterial() {
-        return nexusMaterial;
-    }
-
     public int getNexusHealth() {
-        return nexusHealth;
+        return getConfig().getInt("nexus-health", 75);
     }
 
     public String getXpMessage() {
-        return ChatColor.translateAlternateColorCodes('&', xpMessage);
+        return ChatColor.translateAlternateColorCodes('&', getConfig().getString("xp-message", "&a+12 Shotbow XP"));
     }
 
     public int getNexusDestructionDelay() {
-        return nexusDestructionDelay;
+        return getConfig().getInt("nexus-destruction-delay", 1);
     }
 
     public int getNexusHitDelay() {
-        return nexusHitDelay;
+        return getConfig().getInt("nexus-hit-delay", 20);
     }
 
     public double getGrapplePullStrength() {
-        return grapplePullStrength;
+        return getConfig().getDouble("grapple.pull-strength-multiplier", 0.15);
     }
 
     public double getGrappleDurabilityLossChance() {
-        return grappleDurabilityLossChance;
+        return getConfig().getDouble("grapple.durability-loss-chance", 0.25);
     }
 
     public double getGrappleHookSpeed() {
-        return grappleHookSpeed;
+        return getConfig().getDouble("grapple.hook-speed-multiplier", 1.0);
     }
 
     public double getGrappleUpwardBoost() {
-        return grappleUpwardBoost;
+        return getConfig().getDouble("grapple.upward-pull-boost", 0.1);
     }
 
     public boolean grappleHookHasGravity() {
-        return grappleHookHasGravity;
+        return getConfig().getBoolean("grapple.hook-has-gravity", true);
     }
 
     public double getLauncherPadIronPower() {
-        return launcherPadIronPower;
+        return getConfig().getDouble("launcher-pad.iron-power", 2.0);
     }
 
     public double getLauncherPadDiamondPower() {
-        return launcherPadDiamondPower;
+        return getConfig().getDouble("launcher-pad.diamond-power", 4.0);
     }
 
     public int getScorpioHookCooldown() {
-        return scorpioHookCooldown;
+        return getConfig().getInt("scorpio.hook-cooldown", 3);
     }
 
     public int getScorpioEnemyPullFallImmunity() {
-        return scorpioEnemyPullFallImmunity;
+        return getConfig().getInt("scorpio.enemy-pull-fall-immunity", 10);
     }
 
     public int getScorpioFriendlyPullFallImmunity() {
-        return scorpioFriendlyPullFallImmunity;
+        return getConfig().getInt("scorpio.friendly-pull-fall-immunity", 5);
     }
 
     public NexusManager getNexusManager() {
         return nexusManager;
-    }
-
-    public boolean isShowHealthOnHit() {
-        return showHealthOnHit;
-    }
-
-    public void setShowHealthOnHit(boolean showHealthOnHit) {
-        this.showHealthOnHit = showHealthOnHit;
     }
 
     public ScoreboardManager getScoreboardManager() {
@@ -209,14 +182,27 @@ public final class AnnihilationNexus extends JavaPlugin {
     }
 
     public void reload() {
+        updateConfig();
         reloadConfig();
-        loadNexusMaterial();
-        loadNexusHealth();
-        loadXpMessage();
-        loadNexusDestructionDelay();
-        loadNexusHitDelay();
         // We should also update the scoreboard for all players after a reload
         scoreboardManager.updateForAllPlayers();
+    }
+
+    public void grantNoFall(org.bukkit.entity.Player p, int seconds) {
+        UUID id = p.getUniqueId();
+        noFall.add(id);
+        p.setFallDistance(0f); // Reset current fall distance
+        long ticks = seconds * 20L;
+        Bukkit.getScheduler().runTaskLater(this, () -> noFall.remove(id), ticks);
+    }
+
+    @EventHandler
+    public void onDamage(EntityDamageEvent e) {
+        if (!(e.getEntity() instanceof org.bukkit.entity.Player p)) return;
+        if (e.getCause() == EntityDamageEvent.DamageCause.FALL && noFall.contains(p.getUniqueId())) {
+            e.setCancelled(true);
+            p.setFallDistance(0f); // Ensure fall distance is reset
+        }
     }
 
     private void updateConfig() {
@@ -227,12 +213,12 @@ public final class AnnihilationNexus extends JavaPlugin {
         InputStream defaultConfigStream = getResource("config.yml");
         if (defaultConfigStream != null) {
             YamlConfiguration defaultConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(defaultConfigStream));
-            // Add any missing default values to the user's config
             config.addDefaults(defaultConfig);
             config.options().copyDefaults(true);
             saveConfig();
         }
     }
+
 
     public org.bukkit.inventory.ItemStack getBlinkItem() {
         org.bukkit.inventory.ItemStack blinkItem = new org.bukkit.inventory.ItemStack(Material.PURPLE_DYE);
@@ -274,6 +260,16 @@ public final class AnnihilationNexus extends JavaPlugin {
         return assassinItem;
     }
 
+    public ItemStack getSpyItem() {
+        ItemStack spyItem = new ItemStack(Material.SUGAR);
+        ItemMeta meta = spyItem.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.AQUA + "Flee");
+            spyItem.setItemMeta(meta);
+        }
+        return spyItem;
+    }
+
     public boolean isGrappleItem(ItemStack item) {
         if (item == null || item.getType() != Material.FISHING_ROD) {
             return false;
@@ -303,6 +299,14 @@ public final class AnnihilationNexus extends JavaPlugin {
             return false;
         }
         ItemMeta meta = item.getItemMeta();
-        return meta != null && meta.hasDisplayName() && meta.getDisplayName().equals(ChatColor.GRAY + "Leap");
+        return meta != null && meta.hasDisplayName() && meta.getDisplayName().startsWith(ChatColor.GRAY + "Leap");
+    }
+
+    public boolean isSpyItem(ItemStack item) {
+        if (item == null || item.getType() != Material.SUGAR) {
+            return false;
+        }
+        ItemMeta meta = item.getItemMeta();
+        return meta != null && meta.hasDisplayName() && meta.getDisplayName().startsWith(ChatColor.AQUA + "Flee");
     }
 }

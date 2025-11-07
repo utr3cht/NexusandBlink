@@ -29,7 +29,7 @@ public class ClassCommand implements CommandExecutor {
         }
 
         String className = args[1];
-        if (!className.equalsIgnoreCase("dasher") && !className.equalsIgnoreCase("scout") && !className.equalsIgnoreCase("scorpio") && !className.equalsIgnoreCase("assassin")) {
+        if (!className.equalsIgnoreCase("dasher") && !className.equalsIgnoreCase("scout") && !className.equalsIgnoreCase("scorpio") && !className.equalsIgnoreCase("assassin") && !className.equalsIgnoreCase("spy")) {
             sender.sendMessage(ChatColor.RED + "Class not found.");
             return false;
         }

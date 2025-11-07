@@ -18,6 +18,7 @@ public class PlayerClassManager {
     private final Map<UUID, GrappleAbility> grappleAbilities = new HashMap<>();
     private final Map<UUID, ScorpioAbility> scorpioAbilities = new HashMap<>();
     private final Map<UUID, AssassinAbility> assassinAbilities = new HashMap<>();
+    private final Map<UUID, SpyAbility> spyAbilities = new HashMap<>();
     private File classesFile;
     private FileConfiguration classesConfig;
 
@@ -75,6 +76,18 @@ public class PlayerClassManager {
         player.getInventory().addItem(plugin.getAssassinItem());
     }
 
+    private void removeAllSpyItems(Player player) {
+        player.getInventory().forEach(item -> {
+            if (plugin.isSpyItem(item)) {
+                player.getInventory().remove(item);
+            }
+        });
+    }
+
+    private void addSpyItem(Player player) {
+        player.getInventory().addItem(plugin.getSpyItem());
+    }
+
     public void setPlayerClass(UUID playerId, String className) {
         playerClasses.put(playerId, className);
         Player player = plugin.getServer().getPlayer(playerId);
@@ -85,6 +98,7 @@ public class PlayerClassManager {
         grappleAbilities.remove(playerId);
         scorpioAbilities.remove(playerId);
         assassinAbilities.remove(playerId);
+        spyAbilities.remove(playerId);
 
         // Handle inventory changes
         if (player != null) {
@@ -93,6 +107,7 @@ public class PlayerClassManager {
             removeAllBlinkItems(player);
             removeAllScorpioItems(player);
             removeAllAssassinItems(player);
+            removeAllSpyItems(player);
 
             if (className.equalsIgnoreCase("dasher")) {
                 dasherAbilities.put(playerId, new DasherAbility(player, plugin));
@@ -106,6 +121,9 @@ public class PlayerClassManager {
             } else if (className.equalsIgnoreCase("assassin")) {
                 assassinAbilities.put(playerId, new AssassinAbility(player, plugin));
                 addAssassinItem(player);
+            } else if (className.equalsIgnoreCase("spy")) {
+                spyAbilities.put(playerId, new SpyAbility(player, plugin));
+                addSpyItem(player);
             }
         }
     }
@@ -128,6 +146,10 @@ public class PlayerClassManager {
 
     public AssassinAbility getAssassinAbility(UUID playerId) {
         return assassinAbilities.get(playerId);
+    }
+
+    public SpyAbility getSpyAbility(UUID playerId) {
+        return spyAbilities.get(playerId);
     }
 
     public void loadClasses() {
@@ -171,6 +193,7 @@ public class PlayerClassManager {
             removeAllBlinkItems(player);
             removeAllScorpioItems(player);
             removeAllAssassinItems(player);
+            removeAllSpyItems(player);
 
             if (className.equalsIgnoreCase("dasher")) {
                 dasherAbilities.put(player.getUniqueId(), new DasherAbility(player, plugin));
@@ -184,6 +207,9 @@ public class PlayerClassManager {
             } else if (className.equalsIgnoreCase("assassin")) {
                 assassinAbilities.put(player.getUniqueId(), new AssassinAbility(player, plugin));
                 addAssassinItem(player);
+            } else if (className.equalsIgnoreCase("spy")) {
+                spyAbilities.put(player.getUniqueId(), new SpyAbility(player, plugin));
+                addSpyItem(player);
             }
         }
     }
@@ -193,6 +219,7 @@ public class PlayerClassManager {
         grappleAbilities.remove(playerId);
         scorpioAbilities.remove(playerId);
         assassinAbilities.remove(playerId);
+        spyAbilities.remove(playerId);
         // We don't remove from playerClasses map, as we want to persist it
     }
 }

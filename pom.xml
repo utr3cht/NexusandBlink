@@ -5,11 +5,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.example</groupId>
-    <artifactId>AnnihilationNexus</artifactId>
-    <version>1.0.5</version>
+    <artifactId>Annihilation</artifactId>
+    <version>1.0.28
+    </version>
     <packaging>jar</packaging>
 
-    <name>AnnihilationNexus</name>
+    <name>Annihilation</name>
     <description>A Nexus plugin for the Annihilation game mode.</description>
 
     <properties>
@@ -61,6 +62,10 @@
             <id>sonatype</id>
             <url>https://oss.sonatype.org/content/groups/public/</url>
         </repository>
+        <repository>
+            <id>citizens-repo</id>
+            <url>https://maven.citizensnpcs.co/repo</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -68,6 +73,18 @@
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
             <version>1.21-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.citizensnpcs</groupId>
+            <artifactId>citizens-api</artifactId>
+            <version>2.0.33-SNAPSHOT</version> <!-- Adjust this version if you downloaded a different one -->
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.comphenix.protocol</groupId>
+            <artifactId>ProtocolLib</artifactId>
+            <version>5.2.0</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

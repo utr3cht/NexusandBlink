@@ -5,6 +5,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -57,8 +58,8 @@ public class GrappleListener implements Listener {
         Player player = (Player) event.getEntity().getShooter();
         GrappleAbility ability = plugin.getPlayerClassManager().getGrappleAbility(player.getUniqueId());
 
-        // Only mark the hook as grounded if it hits the top face of a block.
-        if (ability != null && event.getHitBlock() != null && event.getHitBlockFace() == org.bukkit.block.BlockFace.UP) {
+        // Only mark the hook as grounded if it hits a block.
+        if (ability != null && event.getHitBlock() != null) {
             ability.setHookAsGrounded((org.bukkit.entity.FishHook) event.getEntity());
         }
     }
@@ -73,6 +74,23 @@ public class GrappleListener implements Listener {
             if (ability != null && event.getAction().name().contains("RIGHT_CLICK")) {
                 ability.handleClick();
                 event.setCancelled(true);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onEntityDamage(EntityDamageEvent event) {
+        if (event.getEntity() instanceof Player) {
+            Player player = (Player) event.getEntity();
+            String playerClass = plugin.getPlayerClassManager().getPlayerClass(player.getUniqueId());
+
+            if (playerClass != null && playerClass.equalsIgnoreCase("scout")) {
+                ItemStack mainHandItem = player.getInventory().getItemInMainHand();
+                if (plugin.isGrappleItem(mainHandItem)) {
+                    if (event.getCause() == EntityDamageEvent.DamageCause.FALL) {
+                        event.setDamage(event.getDamage() * 0.5); // Reduce fall damage by 50%
+                    }
+                }
             }
         }
     }

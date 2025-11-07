@@ -44,35 +44,35 @@ public class ScorpioAbility {
                     return;
                 }
 
-                if (hook.isOnGround()) {
-                    new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            hook.remove();
-                        }
-                    }.runTaskLater(plugin, 50L); // 2.5 seconds
-                    this.cancel();
-                    return;
-                }
-
-                player.spawnParticle(Particle.CRIT, hook.getLocation(), 1, 0, 0, 0, 0);
-
+                // Player collision check
                 for (Entity entity : hook.getNearbyEntities(0.5, 0.5, 0.5)) {
                     if (entity instanceof Player && !entity.equals(player)) {
                         Player hitPlayer = (Player) entity;
-                        if (isRightClick && !isFriendly(hitPlayer)) {
-                            pullEnemy(hitPlayer);
-                            hook.remove();
-                            this.cancel();
-                            return;
-                        } else if (!isRightClick && isFriendly(hitPlayer)) {
-                            pullToFriendly(hitPlayer);
+                        if (isRightClick) { // Right-click pulls enemy to you
+                            if (!isFriendly(hitPlayer)) {
+                                pullEnemy(hitPlayer);
+                                hook.remove();
+                                this.cancel();
+                                return;
+                            }
+                        } else { // Left-click pulls you to any hit player
+                            pullToTarget(hitPlayer);
                             hook.remove();
                             this.cancel();
                             return;
                         }
                     }
                 }
+
+                // Ground collision check
+                if (hook.isOnGround()) {
+                    hook.remove(); // Just remove the hook, do not grapple
+                    this.cancel();
+                    return;
+                }
+
+                // Particle trail
+                player.spawnParticle(Particle.CRIT, hook.getLocation(), 1, 0, 0, 0, 0);
             }
         }.runTaskTimer(plugin, 0L, 1L);
     }
@@ -96,14 +96,14 @@ public class ScorpioAbility {
         }.runTaskLater(plugin, 20L * plugin.getScorpioEnemyPullFallImmunity());
     }
 
-    public void pullToFriendly(Player friendly) {
+    public void pullToTarget(Player target) {
         if (isHalfBlockInFront()) {
             return;
         }
 
-        Vector vector = friendly.getLocation().toVector().subtract(player.getLocation().toVector());
+        Vector vector = target.getLocation().toVector().subtract(player.getLocation().toVector());
         player.setVelocity(vector.normalize().multiply(2.0));
-        player.setFallDistance(0);
+        player.setFallDistance(-10f);
 
         new BukkitRunnable() {
             @Override

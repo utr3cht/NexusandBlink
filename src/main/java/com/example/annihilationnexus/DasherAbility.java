@@ -99,6 +99,12 @@ public class DasherAbility {
             return 0;
         }
 
+        // Check if the block above the target location is water
+        if (targetLocation.clone().add(0, 1, 0).getBlock().getType() == Material.WATER) {
+            player.sendMessage("Cannot blink into water.");
+            return 0;
+        }
+
         double distance = player.getLocation().distance(targetLocation);
 
         Location originalLocation = player.getLocation();

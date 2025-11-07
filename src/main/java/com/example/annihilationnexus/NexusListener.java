@@ -24,7 +24,7 @@ public class NexusListener implements Listener {
 
     private final AnnihilationNexus plugin;
     private final NexusManager nexusManager;
-    private final Map<UUID, Map<String, Long>> lastHitTimes = new HashMap<>();
+    private final Map<String, Long> lastHitTimes = new HashMap<>();
 
     public NexusListener(AnnihilationNexus plugin, NexusManager nexusManager) {
         this.plugin = plugin;
@@ -46,7 +46,7 @@ public class NexusListener implements Listener {
 
             // Cooldown check for hitting the nexus
             long currentTime = System.currentTimeMillis();
-            long lastHitTime = lastHitTimes.getOrDefault(player.getUniqueId(), new HashMap<>()).getOrDefault(nexus.getTeamName(), 0L);
+            long lastHitTime = lastHitTimes.getOrDefault(nexus.getTeamName(), 0L);
             long hitDelayMillis = plugin.getNexusHitDelay() * 50; // Convert ticks to milliseconds (20 ticks = 1 second)
 
             if (currentTime - lastHitTime < hitDelayMillis) {
@@ -56,7 +56,7 @@ public class NexusListener implements Listener {
             }
 
             // Update last hit time
-            lastHitTimes.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>()).put(nexus.getTeamName(), currentTime);
+            lastHitTimes.put(nexus.getTeamName(), currentTime);
             
             // Prevent players from damaging their own team's nexus (optional, for now we allow it)
             // You would need a team manager to check this.

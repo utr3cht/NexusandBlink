@@ -41,13 +41,21 @@ public class NexusAdminCommand implements CommandExecutor {
                 sender.sendMessage(ChatColor.GREEN + "Nexus for team " + team + " created at your location.");
                 break;
             case "delete":
-                Nexus nexus = nexusManager.getNexusAt(player.getLocation());
-                if (nexus == null) {
-                    sender.sendMessage(ChatColor.RED + "There is no nexus at your location.");
+                if (args.length != 2) {
+                    sender.sendMessage(ChatColor.RED + "Usage: /nexus delete <team>");
                     return false;
                 }
-                nexusManager.removeNexus(nexus.getTeamName());
-                sender.sendMessage(ChatColor.GREEN + "Nexus deleted.");
+                String teamToDelete = args[1];
+                Nexus nexusToDelete = nexusManager.getNexus(teamToDelete);
+                if (nexusToDelete == null) {
+                    sender.sendMessage(ChatColor.RED + "Nexus for team " + teamToDelete + " not found.");
+                    return false;
+                }
+                // Remove the physical block
+                nexusToDelete.getLocation().getBlock().setType(org.bukkit.Material.AIR);
+                nexusManager.removeNexus(teamToDelete);
+                sender.sendMessage(ChatColor.GREEN + "Nexus for team " + teamToDelete + " deleted.");
+                plugin.getScoreboardManager().updateForAllPlayers(); // Refresh scoreboards
                 break;
             case "setnexushp":
                 if (args.length != 3) {
@@ -64,6 +72,7 @@ public class NexusAdminCommand implements CommandExecutor {
                     int hp = Integer.parseInt(args[2]);
                     teamNexus.setHealth(hp);
                     sender.sendMessage(ChatColor.GREEN + "Nexus health for team " + teamName + " set to " + hp);
+                    plugin.getScoreboardManager().updateForAllPlayers(); // Refresh scoreboards
                 } catch (NumberFormatException e) {
                     sender.sendMessage(ChatColor.RED + "Invalid health amount.");
                 }
