@@ -5,8 +5,11 @@ api-version: '1.21'
 authors: [Gemini]
 description: A Nexus plugin for the Annihilation game mode.
 commands:
-  anni:
-    description: Base command for Annihilation Nexus plugin.
+  class:
+    description: Sets a player's class.
+    usage: /<command> <player> <class>
+    permission: annihilationnexus.class.set
+  nexus:
+    description: Nexus administration commands.
     usage: /<command> <subcommand>
     permission: annihilationnexus.admin
-    permission-message: You do not have permission to use this command.

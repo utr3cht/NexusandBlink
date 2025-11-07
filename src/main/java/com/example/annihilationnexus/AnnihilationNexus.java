@@ -27,6 +27,11 @@ public final class AnnihilationNexus extends JavaPlugin {
     private double grappleHookSpeed;
     private double grappleUpwardBoost;
     private boolean grappleHookHasGravity;
+    private double launcherPadIronPower;
+    private double launcherPadDiamondPower;
+    private int scorpioHookCooldown;
+    private int scorpioEnemyPullFallImmunity;
+    private int scorpioFriendlyPullFallImmunity;
 
     @Override
     public void onEnable() {
@@ -41,6 +46,8 @@ public final class AnnihilationNexus extends JavaPlugin {
         loadNexusDestructionDelay();
         loadNexusHitDelay();
         loadGrappleSettings();
+        loadLauncherPadSettings();
+        loadScorpioSettings();
 
         // Plugin startup logic
         this.nexusManager = new NexusManager(this);
@@ -57,8 +64,14 @@ public final class AnnihilationNexus extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerToggleSneakListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerQuitListener(this), this);
         getServer().getPluginManager().registerEvents(new GrappleListener(this), this);
-        this.getCommand("anni").setExecutor(new NexusCommand(this, nexusManager));
-        this.getCommand("anni").setTabCompleter(new NexusTabCompleter(nexusManager));
+        getServer().getPluginManager().registerEvents(new LauncherPadListener(this), this);
+        getServer().getPluginManager().registerEvents(new LauncherPadBreakListener(), this);
+        getServer().getPluginManager().registerEvents(new ScorpioListener(this, playerClassManager), this);
+        getServer().getPluginManager().registerEvents(new AssassinListener(this, playerClassManager), this);
+        this.getCommand("class").setExecutor(new ClassCommand(playerClassManager));
+        this.getCommand("class").setTabCompleter(new ClassTabCompleter(playerClassManager));
+        this.getCommand("nexus").setExecutor(new NexusAdminCommand(this, nexusManager));
+        this.getCommand("nexus").setTabCompleter(new NexusAdminTabCompleter(nexusManager));
         getLogger().info("AnnihilationNexus plugin has been enabled!");
     }
 
@@ -104,6 +117,17 @@ public final class AnnihilationNexus extends JavaPlugin {
         this.grappleHookHasGravity = getConfig().getBoolean("grapple.hook-has-gravity", true);
     }
 
+    private void loadLauncherPadSettings() {
+        this.launcherPadIronPower = getConfig().getDouble("launcher-pad.iron-power", 2.0);
+        this.launcherPadDiamondPower = getConfig().getDouble("launcher-pad.diamond-power", 4.0);
+    }
+
+    private void loadScorpioSettings() {
+        this.scorpioHookCooldown = getConfig().getInt("scorpio.hook-cooldown", 3);
+        this.scorpioEnemyPullFallImmunity = getConfig().getInt("scorpio.enemy-pull-fall-immunity", 10);
+        this.scorpioFriendlyPullFallImmunity = getConfig().getInt("scorpio.friendly-pull-fall-immunity", 5);
+    }
+
     public Material getNexusMaterial() {
         return nexusMaterial;
     }
@@ -142,6 +166,26 @@ public final class AnnihilationNexus extends JavaPlugin {
 
     public boolean grappleHookHasGravity() {
         return grappleHookHasGravity;
+    }
+
+    public double getLauncherPadIronPower() {
+        return launcherPadIronPower;
+    }
+
+    public double getLauncherPadDiamondPower() {
+        return launcherPadDiamondPower;
+    }
+
+    public int getScorpioHookCooldown() {
+        return scorpioHookCooldown;
+    }
+
+    public int getScorpioEnemyPullFallImmunity() {
+        return scorpioEnemyPullFallImmunity;
+    }
+
+    public int getScorpioFriendlyPullFallImmunity() {
+        return scorpioFriendlyPullFallImmunity;
     }
 
     public NexusManager getNexusManager() {
@@ -210,6 +254,26 @@ public final class AnnihilationNexus extends JavaPlugin {
         return grapple;
     }
 
+    public org.bukkit.inventory.ItemStack getScorpioItem() {
+        ItemStack scorpioItem = new ItemStack(Material.NETHER_STAR);
+        ItemMeta meta = scorpioItem.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.GOLD + "Scorpio Hook");
+            scorpioItem.setItemMeta(meta);
+        }
+        return scorpioItem;
+    }
+
+    public org.bukkit.inventory.ItemStack getAssassinItem() {
+        ItemStack assassinItem = new ItemStack(Material.FEATHER);
+        ItemMeta meta = assassinItem.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.GRAY + "Leap");
+            assassinItem.setItemMeta(meta);
+        }
+        return assassinItem;
+    }
+
     public boolean isGrappleItem(ItemStack item) {
         if (item == null || item.getType() != Material.FISHING_ROD) {
             return false;
@@ -224,5 +288,21 @@ public final class AnnihilationNexus extends JavaPlugin {
         }
         ItemMeta meta = item.getItemMeta();
         return meta != null && meta.hasDisplayName() && meta.getDisplayName().startsWith(ChatColor.LIGHT_PURPLE + "Blink");
+    }
+
+    public boolean isScorpioItem(ItemStack item) {
+        if (item == null || item.getType() != Material.NETHER_STAR) {
+            return false;
+        }
+        ItemMeta meta = item.getItemMeta();
+        return meta != null && meta.hasDisplayName() && meta.getDisplayName().equals(ChatColor.GOLD + "Scorpio Hook");
+    }
+
+    public boolean isAssassinItem(ItemStack item) {
+        if (item == null || item.getType() != Material.FEATHER) {
+            return false;
+        }
+        ItemMeta meta = item.getItemMeta();
+        return meta != null && meta.hasDisplayName() && meta.getDisplayName().equals(ChatColor.GRAY + "Leap");
     }
 }

@@ -9,25 +9,27 @@ AnnihilationNexus is a custom plugin for Minecraft servers running Spigot/Paper,
 - **Live Scoreboard**: A sidebar scoreboard displays the real-time health of all nexuses.
 - **Custom Classes & Abilities**: Unique classes that give players special abilities.
   - **Dasher**: A highly mobile class with a **Blink** ability. Teleport short distances with visual effects and a configurable cooldown.
-  - **ScoutMaster-I**: A versatile class with a **Grapple** ability. Use a special fishing rod to pull yourself around the map.
+  - **Scout**: A versatile class with a **Grapple** ability. Use a special fishing rod to pull yourself around the map.
+- **Launcher Pads**: Create launcher pads by placing a stone pressure plate on top of an iron or diamond block. Diamond blocks launch players twice as far.
 - **Configurable Abilities**: Fine-tune ability parameters like grapple strength, durability, and cooldowns in the `config.yml`.
 - **Persistence**: Player class data is saved and loaded, so players keep their class after relogging or server restarts.
 
 ## Commands
 
-All commands are sub-commands of `/anni`.
+### Class Command
 
-- `/anni create <teamName>`: Creates a nexus for the specified team at your current location.
-- `/anni delete <teamName>`: Deletes the nexus for the specified team.
-- `/anni sethealth <teamName> <amount>`: Sets the health of a team's nexus.
-- `/anni togglehealth`: Toggles whether nexus health is displayed on hit.
-- `/anni reload`: Reloads the plugin's configuration files.
-- `/anni class <player> <className>`: Sets a player's class. Available classes: `dasher`, `scoutmaster-i`.
-- `/anni getblinkitem`: Gives you the Dasher's Blink item (Purple Dye).
+- `/class <player> <class>`: Sets a player's class. Available classes: `dasher`, `scout`.
+
+### Nexus Command
+
+- `/nexus create <teamName>`: Creates a nexus for the specified team at your current location.
+- `/nexus delete`: Deletes the nexus at your current location.
+- `/nexus setnexushp <teamName> <amount>`: Sets the health of a team's nexus.
 
 ## Permissions
 
-- `annihilationnexus.admin`: Grants access to all `/anni` commands.
+- `annihilationnexus.admin`: Grants access to all `/nexus` commands.
+- `annihilationnexus.class.set`: Grants access to the `/class` command.
 
 ## Configuration
 

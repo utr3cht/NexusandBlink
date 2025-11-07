@@ -11,3 +11,14 @@ grapple:
   hook-speed-multiplier: 1.0
   upward-pull-boost: 0.1
   hook-has-gravity: true
+
+# Launcher Pad Settings
+launcher-pad:
+  iron-power: 2.0
+  diamond-power: 4.0
+
+# Scorpio Ability Settings
+scorpio:
+  hook-cooldown: 3
+  enemy-pull-fall-immunity: 10
+  friendly-pull-fall-immunity: 5
