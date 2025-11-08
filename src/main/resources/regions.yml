@@ -1,0 +1,3 @@
+# Configuration for class-restricted regions.
+# Use /classregion define <name> to create a new region.
+regions:

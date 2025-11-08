@@ -53,11 +53,13 @@ public class LauncherPadListener implements Listener {
         if (belowType == Material.DIAMOND_BLOCK) {
             launchPower = plugin.getLauncherPadDiamondPower();
             launchSound = Sound.ENTITY_WITHER_SHOOT;
-            direction = player.getLocation().getDirection().normalize();
+            direction = player.getLocation().getDirection();
+            direction.setY(0).normalize();
         } else if (belowType == Material.IRON_BLOCK) {
             launchPower = plugin.getLauncherPadIronPower();
             launchSound = Sound.ENTITY_WITHER_SHOOT;
-            direction = player.getLocation().getDirection().normalize();
+            direction = player.getLocation().getDirection();
+            direction.setY(0).normalize();
         } else if (belowType == Material.EMERALD_BLOCK) {
             launchPower = plugin.getLauncherPadEmeraldPower();
             launchSound = Sound.ENTITY_SLIME_JUMP;
@@ -67,28 +69,31 @@ public class LauncherPadListener implements Listener {
             launchSound = Sound.ENTITY_SLIME_JUMP;
             direction = new Vector(0, 1, 0);
         } else {
-            launchPower = 0.0;
-            launchSound = Sound.BLOCK_NOTE_BLOCK_HAT;
-            direction = new Vector(0, 1, 0);
+            return; // Should not happen due to the check above, but as a safeguard.
         }
 
         player.getWorld().playSound(player.getLocation(), launchSound, 1, 1);
         player.setVelocity(direction.multiply(launchPower));
 
-        launchedPlayers.add(player.getUniqueId()); // 記録
+        launchedPlayers.add(player.getUniqueId()); // Mark player as launched
     }
 
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
+        UUID playerUUID = player.getUniqueId();
 
-        if (!launchedPlayers.contains(player.getUniqueId())) {
+        if (!launchedPlayers.contains(playerUUID)) {
             return;
         }
 
-        // 着地検知: Y座標が変化し、地面に立っている場合
+        // Check if the player has landed
         if (player.isOnGround()) {
-            launchedPlayers.remove(player.getUniqueId());
+            // Remove from launched players to prevent this from running again
+            launchedPlayers.remove(playerUUID);
+            
+            // Add to the main no-fall set, which handles the 1-second grace period after landing
+            plugin.getNoFall().add(playerUUID);
         }
     }
 
@@ -99,7 +104,8 @@ public class LauncherPadListener implements Listener {
         }
 
         if (event.getCause() == EntityDamageEvent.DamageCause.FALL) {
-            if (plugin.getNoFall().contains(player.getUniqueId())) {
+            // If the player was launched OR is in the post-landing grace period, cancel the damage.
+            if (launchedPlayers.contains(player.getUniqueId()) || plugin.getNoFall().contains(player.getUniqueId())) {
                 event.setCancelled(true);
             }
         }

@@ -1,8 +1,8 @@
-name: AnnihilationNexus
-version: 1.3-SNAPSHOT
+name: Annihilation
+version: 2.0
 main: com.example.annihilationnexus.AnnihilationNexus
 api-version: '1.21'
-authors: [Gemini]
+authors: ['Utr3cht']
 description: A Nexus plugin for the Annihilation game mode.
 commands:
   class:

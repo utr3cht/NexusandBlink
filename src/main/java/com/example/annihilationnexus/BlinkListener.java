@@ -113,11 +113,10 @@ public class BlinkListener implements Listener {
 
             // Found the Blink item, update its name
             if (remainingSeconds > 0) {
-                meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Blink " + ChatColor.RED + remainingSeconds + "s");
+                meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Blink " + ChatColor.RED + "(" + remainingSeconds + "s)");
             } else {
                 meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Blink " + ChatColor.GREEN + "READY");
             }
-            meta.setLore(null); // Clear lore
             itemStack.setItemMeta(meta);
             // No need to continue searching, assuming only one Blink item per player
             return;
