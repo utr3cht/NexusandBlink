@@ -8,13 +8,17 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.NamespacedKey;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,7 +28,10 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
     private NexusManager nexusManager;
     private ScoreboardManager scoreboardManager;
     private PlayerClassManager playerClassManager;
+    private ClassRegionManager classRegionManager;
+    private NamespacedKey classKey;
     private final Set<UUID> noFall = ConcurrentHashMap.newKeySet();
+    private final Map<UUID, BukkitTask> noFallTasks = new ConcurrentHashMap<>();
 
     @Override
     public void onEnable() {
@@ -34,6 +41,9 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         // Config handling
         updateConfig();
 
+        this.classKey = new NamespacedKey(this, "class_name");
+        this.classRegionManager = new ClassRegionManager(this);
+
         // Plugin startup logic
         this.nexusManager = new NexusManager(this);
         this.scoreboardManager = new ScoreboardManager(this, nexusManager);
@@ -42,6 +52,8 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         // Load data
         this.nexusManager.loadNexuses();
         this.playerClassManager.loadClasses();
+        this.classRegionManager.loadRegions();
+        this.scoreboardManager.loadScoreboardVisibility();
 
         // Registering events and commands
         getServer().getPluginManager().registerEvents(new NexusListener(this, nexusManager), this);
@@ -55,11 +67,17 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new ScorpioListener(this, playerClassManager), this);
         getServer().getPluginManager().registerEvents(new AssassinListener(this, playerClassManager), this);
         getServer().getPluginManager().registerEvents(new SpyListener(this, playerClassManager), this);
-        this.getCommand("class").setExecutor(new ClassCommand(playerClassManager));
+        getServer().getPluginManager().registerEvents(new TransporterListener(this), this);
+        getServer().getPluginManager().registerEvents(new ClassItemListener(this), this);
+        getServer().getPluginManager().registerEvents(new ClassSelectionListener(this, playerClassManager), this);
+        getServer().getPluginManager().registerEvents(new ClassItemRestrictionListener(this), this);
+        this.getCommand("class").setExecutor(new ClassCommand(this, playerClassManager));
         this.getCommand("class").setTabCompleter(new ClassTabCompleter(playerClassManager));
         this.getCommand("nexus").setExecutor(new NexusAdminCommand(this, nexusManager));
         this.getCommand("nexus").setTabCompleter(new NexusAdminTabCompleter(nexusManager));
         this.getCommand("anni").setExecutor(new AnniAdminCommand(this));
+        this.getCommand("togglescoreboard").setExecutor(new ToggleScoreboardCommand(scoreboardManager));
+        this.getCommand("classregion").setExecutor(new ClassRegionCommand(this, classRegionManager));
 
         // Assassin cooldown display task
         new BukkitRunnable() {
@@ -101,6 +119,8 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         // Plugin shutdown logic
         this.nexusManager.saveNexuses();
         this.playerClassManager.saveClasses();
+        this.classRegionManager.saveRegions();
+        this.scoreboardManager.saveScoreboardVisibility();
         getLogger().info("AnnihilationNexus plugin has been disabled!");
     }
 
@@ -157,6 +177,14 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         return getConfig().getDouble("launcher-pad.diamond-power", 4.0);
     }
 
+    public double getLauncherPadEmeraldPower() {
+        return getConfig().getDouble("launcher-pad.emerald-power", 1.5);
+    }
+
+    public double getLauncherPadGoldPower() {
+        return getConfig().getDouble("launcher-pad.gold-power", 2.0);
+    }
+
     public int getScorpioHookCooldown() {
         return getConfig().getInt("scorpio.hook-cooldown", 3);
     }
@@ -188,12 +216,11 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         scoreboardManager.updateForAllPlayers();
     }
 
-    public void grantNoFall(org.bukkit.entity.Player p, int seconds) {
+    public void grantNoFall(org.bukkit.entity.Player p) { // Removed 'seconds' parameter
         UUID id = p.getUniqueId();
         noFall.add(id);
         p.setFallDistance(0f); // Reset current fall distance
-        long ticks = seconds * 20L;
-        Bukkit.getScheduler().runTaskLater(this, () -> noFall.remove(id), ticks);
+        // No scheduled task here, will be handled by PlayerMoveEvent
     }
 
     @EventHandler
@@ -202,6 +229,32 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         if (e.getCause() == EntityDamageEvent.DamageCause.FALL && noFall.contains(p.getUniqueId())) {
             e.setCancelled(true);
             p.setFallDistance(0f); // Ensure fall distance is reset
+        }
+    }
+
+    @EventHandler // Add this new event handler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        org.bukkit.entity.Player player = event.getPlayer();
+        UUID playerId = player.getUniqueId();
+
+        // If player is in noFall set and just landed
+        if (noFall.contains(playerId) && player.isOnGround() && !event.getFrom().getBlock().equals(event.getTo().getBlock())) {
+            // Cancel any existing task for this player
+            if (noFallTasks.containsKey(playerId)) {
+                noFallTasks.get(playerId).cancel();
+            }
+
+            // Schedule removal from noFall after 1 second
+            BukkitTask task = new BukkitRunnable() {
+                @Override
+                public void run() {
+                    noFall.remove(playerId);
+                    noFallTasks.remove(playerId);
+                    AnnihilationNexus.this.getLogger().info("Removed noFall for " + player.getName() + " after landing.");
+                }
+            }.runTaskLater(this, 20L); // 1 second (20 ticks)
+
+            noFallTasks.put(playerId, task);
         }
     }
 
@@ -218,7 +271,6 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
             saveConfig();
         }
     }
-
 
     public org.bukkit.inventory.ItemStack getBlinkItem() {
         org.bukkit.inventory.ItemStack blinkItem = new org.bukkit.inventory.ItemStack(Material.PURPLE_DYE);
@@ -261,7 +313,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
     }
 
     public ItemStack getSpyItem() {
-        ItemStack spyItem = new ItemStack(Material.SUGAR);
+        ItemStack spyItem = new ItemStack(Material.SUGAR); // Changed to SUGAR
         ItemMeta meta = spyItem.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(ChatColor.AQUA + "Flee");
@@ -302,11 +354,46 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         return meta != null && meta.hasDisplayName() && meta.getDisplayName().startsWith(ChatColor.GRAY + "Leap");
     }
 
+    public org.bukkit.inventory.ItemStack getTransporterItem() {
+        ItemStack transporterItem = new ItemStack(Material.QUARTZ);
+        ItemMeta meta = transporterItem.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.GREEN + "Transporter");
+            transporterItem.setItemMeta(meta);
+        }
+        return transporterItem;
+    }
+
+    public boolean isTransporterItem(ItemStack item) {
+        return item != null && item.getType() == Material.QUARTZ;
+    }
+
     public boolean isSpyItem(ItemStack item) {
-        if (item == null || item.getType() != Material.SUGAR) {
+        if (item == null || item.getType() != Material.SUGAR) { // Changed to SUGAR
             return false;
         }
         ItemMeta meta = item.getItemMeta();
         return meta != null && meta.hasDisplayName() && meta.getDisplayName().startsWith(ChatColor.AQUA + "Flee");
+    }
+
+    public NamespacedKey getClassKey() {
+        return classKey;
+    }
+
+    public ClassRegionManager getClassRegionManager() {
+        return classRegionManager;
+    }
+
+    public Set<UUID> getNoFall() {
+        return noFall;
+    }
+
+    // Helper method to check if an item is any class item
+    public boolean isClassItem(ItemStack item) {
+        return isBlinkItem(item) || isGrappleItem(item) || isScorpioItem(item) || isAssassinItem(item) || isSpyItem(item) || isTransporterItem(item);
+    }
+
+    public double getTpDistanceLimit() {
+        return getConfig().getDouble("transporteractive.tp-distance-limit", 20.0); // Default to 20 blocks
     }
 }

@@ -16,9 +16,29 @@ grapple:
 launcher-pad:
   iron-power: 2.0
   diamond-power: 4.0
+  emerald-power: 1.5
+  gold-power: 2.0
 
 # Scorpio Ability Settings
 scorpio:
   hook-cooldown: 3
   enemy-pull-fall-immunity: 10
   friendly-pull-fall-immunity: 5
+
+# Scoreboard Settings
+# You can use placeholders:
+# %online_players% - Shows the number of online players.
+# NEXUS_STATUS - A special placeholder that will be replaced by the list of nexuses and their health.
+scoreboard:
+  title: "&e&lAnnihilation"
+  lines:
+    - "&7&m------------------"
+    - "&eNexuses:"
+    - "NEXUS_STATUS"
+    - ""
+    - "&ePlayers: &f%online_players%"
+    - "&7&m------------------ "
+
+# Transporter Ability Settings
+transporter:
+  tp-distance-limit: 20.0

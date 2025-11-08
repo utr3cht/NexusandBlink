@@ -15,6 +15,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.Sound;
 
 import java.util.HashMap;
 import java.util.UUID;
@@ -75,6 +76,7 @@ public class SpyAbility {
         this.isVanished = false;
         this.vanishLocation = null;
         cancelVanishTimer();
+        player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f); // Play Enderman teleport sound
         player.sendMessage(ChatColor.GRAY + "You are now visible.");
 
         for (Player onlinePlayer : plugin.getServer().getOnlinePlayers()) {

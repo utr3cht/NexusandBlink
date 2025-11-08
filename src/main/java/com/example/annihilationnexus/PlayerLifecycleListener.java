@@ -26,6 +26,9 @@ public class PlayerLifecycleListener implements Listener {
     @EventHandler
     public void onPlayerRespawn(PlayerRespawnEvent event) {
         Player player = event.getPlayer();
+        // Remove player from post-death portal cooldown
+        plugin.getPlayerClassManager().removePlayerFromPostDeathPortalCooldown(player.getUniqueId());
+
         // A short delay to ensure the player is ready
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             String className = plugin.getPlayerClassManager().getPlayerClass(player.getUniqueId());

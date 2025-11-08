@@ -1,19 +1,33 @@
 name: AnnihilationNexus
-version: 1.0-SNAPSHOT
+version: 1.3-SNAPSHOT
 main: com.example.annihilationnexus.AnnihilationNexus
 api-version: '1.21'
 authors: [Gemini]
 description: A Nexus plugin for the Annihilation game mode.
 commands:
   class:
-    description: Sets a player's class.
-    usage: /<command> <player> <class>
-    permission: annihilationnexus.class.set
+    description: Select your class.
+    usage: /class [class_name]
   nexus:
-    description: Nexus administration commands.
-    usage: /<command> <subcommand>
-    permission: annihilationnexus.admin
-  anni:
-    description: AnnihilationNexus main command.
-    usage: /<command> reload
+    description: Admin commands for Nexus management.
+    usage: /nexus [create|destroy|sethealth]
     permission: annihilation.admin
+    permission-message: You do not have permission to use this command.
+  anni:
+    description: Admin commands for Annihilation.
+    usage: /anni [start|stop|reload]
+    permission: annihilation.admin
+    permission-message: You do not have permission to use this command.
+  togglescoreboard:
+    description: Toggle scoreboard visibility.
+    usage: /togglescoreboard
+  classregion:
+    description: Manage class restricted regions.
+    usage: /classregion [create|delete|list]
+    permission: annihilation.admin
+    permission-message: You do not have permission to use this command.
+
+permissions:
+  annihilation.admin:
+    description: Allows access to Annihilation admin commands.
+    default: op
