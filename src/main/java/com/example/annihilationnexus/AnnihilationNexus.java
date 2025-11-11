@@ -22,8 +22,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
+import java.util.ArrayList;
 
 public final class AnnihilationNexus extends JavaPlugin implements Listener {
+
+    // Simple record to hold material and its drop chance
+    public record DropInfo(Material material, double chance) {}
 
     private NexusManager nexusManager;
     private ScoreboardManager scoreboardManager;
@@ -32,14 +37,18 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
     private NamespacedKey classKey;
     private final Set<UUID> noFall = ConcurrentHashMap.newKeySet();
     private final Map<UUID, BukkitTask> noFallTasks = new ConcurrentHashMap<>();
+    private final Set<UUID> achievedNetheriteHoeBreak = ConcurrentHashMap.newKeySet();
 
     @Override
     public void onEnable() {
         // Register this class as a listener for EntityDamageEvent
         getServer().getPluginManager().registerEvents(this, this);
+        getServer().getPluginManager().registerEvents(new NetheriteHoeAchievementListener(this), this); // Register new listener
 
         // Config handling
-        updateConfig();
+        saveDefaultConfig(); // Ensure config.yml exists with defaults
+        reloadConfig(); // Load the config from disk
+        loadAchievedNetheriteHoeBreak(); // Load achievement data
 
         this.classKey = new NamespacedKey(this, "class_name");
         this.classRegionManager = new ClassRegionManager(this);
@@ -71,6 +80,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new ClassItemListener(this), this);
         getServer().getPluginManager().registerEvents(new ClassSelectionListener(this, playerClassManager), this);
         getServer().getPluginManager().registerEvents(new ClassItemRestrictionListener(this), this);
+        getServer().getPluginManager().registerEvents(new FarmerListener(this, playerClassManager), this);
         this.getCommand("class").setExecutor(new ClassCommand(this, playerClassManager));
         this.getCommand("class").setTabCompleter(new ClassTabCompleter(playerClassManager));
         this.getCommand("nexus").setExecutor(new NexusAdminCommand(this, nexusManager));
@@ -111,6 +121,22 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
             }
         }.runTaskTimer(this, 0L, 20L);
 
+        // Farmer Feast cooldown display task
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
+                    String playerClass = playerClassManager.getPlayerClass(player.getUniqueId());
+                    if (playerClass != null && playerClass.equalsIgnoreCase("farmer")) {
+                        FarmerAbility ability = playerClassManager.getFarmerAbility(player.getUniqueId());
+                        if (ability != null) {
+                            ability.updateItemLore(player);
+                        }
+                    }
+                }
+            }
+        }.runTaskTimer(this, 0L, 20L);
+
         getLogger().info("AnnihilationNexus plugin has been enabled!");
     }
 
@@ -121,7 +147,50 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         this.playerClassManager.saveClasses();
         this.classRegionManager.saveRegions();
         this.scoreboardManager.saveScoreboardVisibility();
+        saveAchievedNetheriteHoeBreak(); // Save achievement data
         getLogger().info("AnnihilationNexus plugin has been disabled!");
+    }
+
+    @Override
+    public void saveDefaultConfig() {
+        super.saveDefaultConfig();
+        // Add custom defaults for configurable crop drops if they don't exist
+        FileConfiguration config = getConfig();
+        if (!config.contains("farmer.extra-drops.crops.custom-drops")) {
+            List<Map<String, Object>> defaultDrops = new ArrayList<>();
+            Map<String, Object> appleDrop = new java.util.HashMap<>();
+            appleDrop.put("material", "APPLE");
+            appleDrop.put("chance", 0.0025);
+            defaultDrops.add(appleDrop);
+
+            Map<String, Object> ghastTearDrop = new java.util.HashMap<>();
+            ghastTearDrop.put("material", "GHAST_TEAR");
+            ghastTearDrop.put("chance", 0.01);
+            defaultDrops.add(ghastTearDrop);
+
+            Map<String, Object> netherWartDrop = new java.util.HashMap<>();
+            netherWartDrop.put("material", "NETHER_WART");
+            netherWartDrop.put("chance", 0.01);
+            defaultDrops.add(netherWartDrop);
+
+            Map<String, Object> ironOreDrop = new java.util.HashMap<>();
+            ironOreDrop.put("material", "IRON_ORE");
+            ironOreDrop.put("chance", 0.01);
+            defaultDrops.add(ironOreDrop);
+
+            Map<String, Object> bookDrop = new java.util.HashMap<>();
+            bookDrop.put("material", "BOOK");
+            bookDrop.put("chance", 0.01);
+            defaultDrops.add(bookDrop);
+
+            Map<String, Object> soulSandDrop = new java.util.HashMap<>();
+            soulSandDrop.put("material", "SOUL_SAND");
+            soulSandDrop.put("chance", 0.01);
+            defaultDrops.add(soulSandDrop);
+            
+            config.set("farmer.extra-drops.crops.custom-drops", defaultDrops);
+            saveConfig();
+        }
     }
 
     public Material getNexusMaterial() {
@@ -197,6 +266,14 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         return getConfig().getInt("scorpio.friendly-pull-fall-immunity", 5);
     }
 
+    public double getScorpioStuckDuration() {
+        return getConfig().getDouble("scorpio.stuck-duration-seconds", 1.5); // Default to 1.5 seconds
+    }
+
+    public double getScorpioDistancePullMultiplier() {
+        return getConfig().getDouble("scorpio.distance-pull-multiplier", 0.1);
+    }
+
     public NexusManager getNexusManager() {
         return nexusManager;
     }
@@ -210,8 +287,15 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
     }
 
     public void reload() {
-        updateConfig();
-        reloadConfig();
+        reloadConfig(); // Reload the config from disk
+        // Ensure any new defaults are copied to the in-memory config
+        FileConfiguration config = getConfig();
+        InputStream defaultConfigStream = getResource("config.yml");
+        if (defaultConfigStream != null) {
+            YamlConfiguration defaultConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(defaultConfigStream));
+            config.addDefaults(defaultConfig);
+            config.options().copyDefaults(true);
+        }
         // We should also update the scoreboard for all players after a reload
         scoreboardManager.updateForAllPlayers();
     }
@@ -258,19 +342,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         }
     }
 
-    private void updateConfig() {
-        saveDefaultConfig();
-        FileConfiguration config = getConfig();
 
-        // Get the default config from the JAR
-        InputStream defaultConfigStream = getResource("config.yml");
-        if (defaultConfigStream != null) {
-            YamlConfiguration defaultConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(defaultConfigStream));
-            config.addDefaults(defaultConfig);
-            config.options().copyDefaults(true);
-            saveConfig();
-        }
-    }
 
     public org.bukkit.inventory.ItemStack getBlinkItem() {
         org.bukkit.inventory.ItemStack blinkItem = new org.bukkit.inventory.ItemStack(Material.PURPLE_DYE);
@@ -365,7 +437,11 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
     }
 
     public boolean isTransporterItem(ItemStack item) {
-        return item != null && item.getType() == Material.QUARTZ;
+        if (item == null || item.getType() != Material.QUARTZ) {
+            return false;
+        }
+        ItemMeta meta = item.getItemMeta();
+        return meta != null && meta.hasDisplayName() && meta.getDisplayName().startsWith(ChatColor.GREEN + "Transporter");
     }
 
     public boolean isSpyItem(ItemStack item) {
@@ -374,6 +450,42 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         }
         ItemMeta meta = item.getItemMeta();
         return meta != null && meta.hasDisplayName() && meta.getDisplayName().startsWith(ChatColor.AQUA + "Flee");
+    }
+
+    public ItemStack getFeastItem() {
+        ItemStack item = new ItemStack(Material.GOLDEN_CARROT);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.GOLD + "Feast");
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    public boolean isFeastItem(ItemStack item) {
+        if (item == null || item.getType() != Material.GOLDEN_CARROT) {
+            return false;
+        }
+        ItemMeta meta = item.getItemMeta();
+        return meta != null && meta.hasDisplayName() && meta.getDisplayName().startsWith(ChatColor.GOLD + "Feast");
+    }
+
+    public ItemStack getFamineItem() {
+        ItemStack item = new ItemStack(Material.DEAD_BUSH);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.DARK_GRAY + "Famine");
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    public boolean isFamineItem(ItemStack item) {
+        if (item == null || item.getType() != Material.DEAD_BUSH) {
+            return false;
+        }
+        ItemMeta meta = item.getItemMeta();
+        return meta != null && meta.hasDisplayName() && meta.getDisplayName().startsWith(ChatColor.DARK_GRAY + "Famine");
     }
 
     public NamespacedKey getClassKey() {
@@ -390,10 +502,154 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
 
     // Helper method to check if an item is any class item
     public boolean isClassItem(ItemStack item) {
-        return isBlinkItem(item) || isGrappleItem(item) || isScorpioItem(item) || isAssassinItem(item) || isSpyItem(item) || isTransporterItem(item);
+        return isBlinkItem(item) || isGrappleItem(item) || isScorpioItem(item) || isAssassinItem(item) || isSpyItem(item) || isTransporterItem(item) || isFeastItem(item) || isFamineItem(item);
     }
 
     public double getTpDistanceLimit() {
         return getConfig().getDouble("transporteractive.tp-distance-limit", 20.0); // Default to 20 blocks
+    }
+
+    public int getDasherMaxBlinkDistance() {
+        return getConfig().getInt("dasher.max-blink-distance", 15); // Default to 15 blocks
+    }
+
+    public int getDasherMinBlinkDistance() {
+        return getConfig().getInt("dasher.min-blink-distance", 3); // Default to 3 blocks
+    }
+
+    // Netherite Hoe Achievement methods
+    public boolean hasAchievedNetheriteHoeBreak(UUID playerUuid) {
+        return achievedNetheriteHoeBreak.contains(playerUuid);
+    }
+
+    public void addAchievedNetheriteHoeBreak(UUID playerUuid) {
+        achievedNetheriteHoeBreak.add(playerUuid);
+        saveAchievedNetheriteHoeBreak();
+    }
+
+    private void saveAchievedNetheriteHoeBreak() {
+        getConfig().set("achievements.netherite-hoe-break", achievedNetheriteHoeBreak.stream().map(UUID::toString).collect(java.util.ArrayList::new, java.util.ArrayList::add, java.util.ArrayList::addAll));
+        saveConfig();
+    }
+
+    private void loadAchievedNetheriteHoeBreak() {
+        java.util.List<String> uuids = getConfig().getStringList("achievements.netherite-hoe-break");
+        achievedNetheriteHoeBreak.clear();
+        for (String uuidString : uuids) {
+            try {
+                achievedNetheriteHoeBreak.add(UUID.fromString(uuidString));
+            } catch (IllegalArgumentException e) {
+                getLogger().warning("Invalid UUID found in config for netherite hoe achievement: " + uuidString);
+            }
+        }
+    }
+
+    public String getNetheriteHoeBreakAchievementMessageEn() {
+        return getConfig().getString("achievements.netherite-hoe-break-message.en", "&aAchievement Unlocked: &fNetherite Hoe Breaker!");
+    }
+
+    public String getNetheriteHoeBreakAchievementMessageJa() {
+        return getConfig().getString("achievements.netherite-hoe-break-message.ja", "&a実績解除: &fネザライトのクワ破壊者！");
+    }
+
+    // Farmer Config Getters
+    public int getFeastCooldown() {
+        return getConfig().getInt("farmer.feast.cooldown", 30);
+    }
+
+    public double getFeastRadius() {
+        return getConfig().getDouble("farmer.feast.radius", 13.0);
+    }
+
+    public float getFeastSaturation() {
+        return (float) getConfig().getDouble("farmer.feast.saturation", 4.0);
+    }
+
+    public int getFamineCooldown() {
+        return getConfig().getInt("farmer.famine.cooldown", 90);
+    }
+
+    public double getFamineRadius() {
+        return getConfig().getDouble("farmer.famine.radius", 13.0);
+    }
+
+    public int getFamineHungerLevel() {
+        return getConfig().getInt("farmer.famine.hunger-level", 20);
+    }
+
+    public int getFamineHungerDuration() {
+        return getConfig().getInt("farmer.famine.hunger-duration", 30);
+    }
+
+    public int getFamineFoodLevel() {
+        return getConfig().getInt("farmer.famine.food-level", 3);
+    }
+
+    public int getAutoReplantDelay() {
+        return getConfig().getInt("farmer.auto-replant-delay", 5);
+    }
+
+    public double getGrassSeedChance() {
+        return getConfig().getDouble("farmer.extra-drops.grass.seed-chance", 0.1);
+    }
+
+    public double getGrassPotatoChance() {
+        return getConfig().getDouble("farmer.extra-drops.grass.potato-chance", 0.05);
+    }
+
+    public double getGrassCarrotChance() {
+        return getConfig().getDouble("farmer.extra-drops.grass.carrot-chance", 0.05);
+    }
+
+
+
+    public double getEatingBonusChance() {
+        return getConfig().getDouble("farmer.eating-bonus.chance", 0.3);
+    }
+
+    public double getEatingBonusExtraHealth() {
+        return getConfig().getDouble("farmer.eating-bonus.extra-health", 2.0);
+    }
+
+    public int getEatingBonusExtraFood() {
+        return getConfig().getInt("farmer.eating-bonus.extra-food", 2);
+    }
+
+    public int getCropProtectionDuration() {
+        return getConfig().getInt("farmer.crop-protection-duration", 80);
+    }
+
+    public boolean getPreventFarmlandTrample() {
+        return getConfig().getBoolean("farmer.prevent-farmland-trample", true);
+    }
+
+    public List<DropInfo> getCustomCropDrops() {
+        List<DropInfo> drops = new ArrayList<>();
+        List<?> rawList = getConfig().getList("farmer.extra-drops.crops.custom-drops");
+
+        if (rawList == null) {
+            getLogger().warning("No custom crop drops defined in config.yml. Using default.");
+            return drops;
+        }
+
+        for (Object o : rawList) {
+            if (o instanceof Map) {
+                Map<?, ?> map = (Map<?, ?>) o;
+                String materialName = (String) map.get("material");
+                Double chance = (Double) map.get("chance");
+
+                if (materialName != null && chance != null) {
+                    try {
+                        Material material = Material.valueOf(materialName.toUpperCase());
+                        drops.add(new DropInfo(material, chance));
+                    } catch (IllegalArgumentException e) {
+                        getLogger().warning("Invalid material name '" + materialName + "' in custom crop drops config.");
+                    }
+                } else {
+                    getLogger().warning("Invalid custom crop drop entry (missing material or chance): " + map);
+                }
+            }
+        }
+        return drops;
     }
 }
