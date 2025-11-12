@@ -484,10 +484,13 @@ public class TransporterAbility {
                             Block feetBlock = destination.getBlock();
                             Block headBlock = destination.clone().add(0, 1, 0).getBlock();
                 
-                            if (!feetBlock.isPassable() || !headBlock.isPassable()) {
-                                player.sendMessage(ChatColor.RED + "Teleportation failed: The destination is obstructed!");
+                            // Check if blocks are solid or liquid
+                            if (!feetBlock.isPassable() || !headBlock.isPassable() ||
+                                feetBlock.getType() == Material.WATER || feetBlock.getType() == Material.LAVA ||
+                                headBlock.getType() == Material.WATER || headBlock.getType() == Material.LAVA) {
+                                player.sendMessage(ChatColor.RED + "Teleportation failed: The destination is obstructed or filled with liquid!");
                                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 1.0f);
-                                plugin.getLogger().warning("Teleportation for " + player.getName() + " to " + destination + " was cancelled due to obstruction.");
+                                plugin.getLogger().warning("Teleportation for " + player.getName() + " to " + destination + " was cancelled due to obstruction or liquid.");
                                 return;
                             }
                             // --- End Safety Check ---
