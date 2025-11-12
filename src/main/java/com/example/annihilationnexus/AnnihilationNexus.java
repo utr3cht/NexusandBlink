@@ -640,26 +640,34 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         List<?> rawList = getConfig().getList("farmer.extra-drops.crops.custom-drops");
 
         if (rawList == null) {
-            getLogger().warning("No custom crop drops defined in config.yml. Using default.");
+            // This is normal if not configured, so no warning needed.
             return drops;
         }
 
         for (Object o : rawList) {
-            if (o instanceof Map) {
-                Map<?, ?> map = (Map<?, ?>) o;
-                String materialName = (String) map.get("material");
-                Double chance = (Double) map.get("chance");
+            if (!(o instanceof Map)) {
+                continue;
+            }
+            Map<?, ?> map = (Map<?, ?>) o;
 
-                if (materialName != null && chance != null) {
-                    try {
-                        Material material = Material.valueOf(materialName.toUpperCase());
-                        drops.add(new DropInfo(material, chance));
-                    } catch (IllegalArgumentException e) {
-                        getLogger().warning("Invalid material name '" + materialName + "' in custom crop drops config.");
-                    }
-                } else {
-                    getLogger().warning("Invalid custom crop drop entry (missing material or chance): " + map);
-                }
+            // Ensure both material and chance exist and are of the correct type
+            if (!(map.get("material") instanceof String) || !(map.get("chance") instanceof Number)) {
+                // Silently ignore invalid or incomplete entries
+                continue;
+            }
+
+            String materialName = (String) map.get("material");
+            double chance = ((Number) map.get("chance")).doubleValue();
+
+            if (materialName.isEmpty()) {
+                continue; // Ignore entries with empty material names
+            }
+
+            try {
+                Material material = Material.valueOf(materialName.toUpperCase());
+                drops.add(new DropInfo(material, chance));
+            } catch (IllegalArgumentException e) {
+                getLogger().warning("Invalid material name '" + materialName + "' in custom crop drops config.");
             }
         }
         return drops;
