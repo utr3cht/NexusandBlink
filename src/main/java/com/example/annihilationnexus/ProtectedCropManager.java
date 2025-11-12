@@ -43,6 +43,10 @@ public class ProtectedCropManager {
                 Location loc = Location.deserialize(cropsConfig.getConfigurationSection("crops").getConfigurationSection(key).getValues(true));
                 ProtectedCropInfo info = (ProtectedCropInfo) cropsConfig.get("crops." + key + ".info");
                 if (loc != null && info != null) {
+                    if (!loc.isWorldLoaded()) {
+                        plugin.getLogger().warning("Could not start growth task for crop at " + loc + " because world is not loaded. It will be skipped.");
+                        continue;
+                    }
                     protectedCrops.put(loc, info);
                     startGrowthTask(loc.getBlock()); // Start growth task for loaded crop
                 }
@@ -74,13 +78,17 @@ public class ProtectedCropManager {
     public void addCrop(Location location, UUID planter) {
         protectedCrops.put(location, new ProtectedCropInfo(System.currentTimeMillis(), planter));
         startGrowthTask(location.getBlock());
+        plugin.getLogger().info("[DEBUG] Added and started growth for crop at: " + location);
     }
 
     public void removeCrop(Location location) {
-        protectedCrops.remove(location);
+        if (protectedCrops.remove(location) != null) {
+            plugin.getLogger().info("[DEBUG] Removed crop protection at: " + location);
+        }
         if (growthTasks.containsKey(location)) {
             growthTasks.get(location).cancel();
             growthTasks.remove(location);
+            plugin.getLogger().info("[DEBUG] Cancelled growth task for crop at: " + location);
         }
     }
 
@@ -88,24 +96,30 @@ public class ProtectedCropManager {
         Location location = block.getLocation();
         // Do not start a new task if one is already running for this location
         if (growthTasks.containsKey(location)) {
+            plugin.getLogger().warning("[DEBUG] Attempted to start a growth task where one already exists at: " + location);
             return;
         }
 
+        plugin.getLogger().info("[DEBUG] Starting new growth task for crop at: " + location);
         BukkitTask task = new BukkitRunnable() {
             @Override
             public void run() {
                 // Ensure the world is loaded before getting the block
                 if (!location.isWorldLoaded()) {
+                    plugin.getLogger().warning("[DEBUG] World not loaded for growth task at: " + location + ". Task will be cancelled.");
+                    removeCrop(location); // This will cancel the task
                     return;
                 }
                 Block currentBlock = location.getBlock();
                 if (!(currentBlock.getBlockData() instanceof Ageable)) {
+                    plugin.getLogger().warning("[DEBUG] Block at " + location + " is no longer an Ageable crop. Removing protection.");
                     removeCrop(location);
                     return;
                 }
 
                 Ageable ageable = (Ageable) currentBlock.getBlockData();
                 if (ageable.getAge() >= ageable.getMaximumAge()) {
+                    plugin.getLogger().info("[DEBUG] Crop at " + location + " reached max age. Removing protection via fallback.");
                     // This should be handled by BlockGrowEvent, but as a fallback:
                     removeCrop(location);
                     return;
@@ -113,6 +127,7 @@ public class ProtectedCropManager {
 
                 ageable.setAge(ageable.getAge() + 1);
                 currentBlock.setBlockData(ageable);
+                // plugin.getLogger().info("[DEBUG] Growth task ran for " + location + ". New age: " + ageable.getAge()); // This can be spammy
             }
         }.runTaskTimer(plugin, 143L, 143L); // Approx. 7.15 seconds interval
 
