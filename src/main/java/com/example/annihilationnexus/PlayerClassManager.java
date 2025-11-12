@@ -4,6 +4,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.Material;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,6 +25,7 @@ public class PlayerClassManager {
     private final Map<UUID, AssassinAbility> assassinAbilities = new HashMap<>();
     private final Map<UUID, SpyAbility> spyAbilities = new HashMap<>();
     private final Map<UUID, TransporterAbility> transporterAbilities = new HashMap<>();
+    private final Map<UUID, FarmerAbility> farmerAbilities = new HashMap<>();
     private final Set<UUID> postDeathPortalCooldown = ConcurrentHashMap.newKeySet(); // New field
     private File classesFile;
     private FileConfiguration classesConfig;
@@ -46,28 +48,42 @@ public class PlayerClassManager {
         }
     }
 
+    private void givePlayerItem(Player player, ItemStack item) {
+        if (player.getInventory().firstEmpty() == -1) {
+            player.sendMessage(org.bukkit.ChatColor.RED + "Your inventory is full. Could not receive class item: " + (item.hasItemMeta() && item.getItemMeta().hasDisplayName() ? item.getItemMeta().getDisplayName() : item.getType().name()));
+            return;
+        }
+        player.getInventory().addItem(item);
+    }
+
     private void addGrappleItem(Player player) {
-        player.getInventory().addItem(plugin.getGrappleItem());
+        givePlayerItem(player, plugin.getGrappleItem());
     }
 
     private void addBlinkItem(Player player) {
-        player.getInventory().addItem(plugin.getBlinkItem());
+        givePlayerItem(player, plugin.getBlinkItem());
     }
 
     private void addScorpioItem(Player player) {
-        player.getInventory().addItem(plugin.getScorpioItem());
+        givePlayerItem(player, plugin.getScorpioItem());
     }
 
     private void addAssassinItem(Player player) {
-        player.getInventory().addItem(plugin.getAssassinItem());
+        givePlayerItem(player, plugin.getAssassinItem());
     }
 
     private void addSpyItem(Player player) {
-        player.getInventory().addItem(plugin.getSpyItem());
+        givePlayerItem(player, plugin.getSpyItem());
     }
 
     private void addTransporterItem(Player player) {
-        player.getInventory().addItem(plugin.getTransporterItem());
+        givePlayerItem(player, plugin.getTransporterItem());
+    }
+
+    private void addFarmerItems(Player player) {
+        givePlayerItem(player, new ItemStack(Material.BONE_MEAL, 1));
+        givePlayerItem(player, plugin.getFeastItem());
+        givePlayerItem(player, plugin.getFamineItem());
     }
 
     public void setPlayerClass(UUID playerId, String className) {
@@ -98,6 +114,7 @@ public class PlayerClassManager {
         assassinAbilities.remove(playerId);
         spyAbilities.remove(playerId);
         transporterAbilities.remove(playerId);
+        farmerAbilities.remove(playerId);
 
         // Handle inventory changes
         // Remove all class-specific items first
@@ -121,6 +138,9 @@ public class PlayerClassManager {
         } else if (className.equalsIgnoreCase("transporter")) {
             transporterAbilities.put(playerId, new TransporterAbility(plugin));
             addTransporterItem(player);
+        } else if (className.equalsIgnoreCase("farmer")) {
+            farmerAbilities.put(playerId, new FarmerAbility(plugin));
+            addFarmerItems(player);
         }
     }
 
@@ -152,6 +172,10 @@ public class PlayerClassManager {
         TransporterAbility ability = transporterAbilities.get(playerId);
         plugin.getLogger().info("getTransporterActiveAbility called for player " + playerId + ". Returning: " + (ability != null ? "instance" : "null"));
         return ability;
+    }
+
+    public FarmerAbility getFarmerAbility(UUID playerId) {
+        return farmerAbilities.get(playerId);
     }
 
     public void loadClasses() {
@@ -214,6 +238,9 @@ public class PlayerClassManager {
             else if (className.equalsIgnoreCase("transporter")) {
                 transporterAbilities.put(player.getUniqueId(), new TransporterAbility(plugin));
                 addTransporterItem(player);
+            } else if (className.equalsIgnoreCase("farmer")) {
+                farmerAbilities.put(player.getUniqueId(), new FarmerAbility(plugin));
+                addFarmerItems(player);
             }
         }
     }
@@ -225,6 +252,7 @@ public class PlayerClassManager {
         assassinAbilities.remove(playerId);
         spyAbilities.remove(playerId);
         transporterAbilities.remove(playerId);
+        farmerAbilities.remove(playerId);
         // We don't remove from playerClasses map, as we want to persist it
     }
 
@@ -243,4 +271,3 @@ public class PlayerClassManager {
         return postDeathPortalCooldown.contains(playerUUID);
     }
 }
-
