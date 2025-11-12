@@ -4,6 +4,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.configuration.serialization.ConfigurationSerialization;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -34,6 +35,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
     private ScoreboardManager scoreboardManager;
     private PlayerClassManager playerClassManager;
     private ClassRegionManager classRegionManager;
+    private ProtectedCropManager protectedCropManager;
     private NamespacedKey classKey;
     private final Set<UUID> noFall = ConcurrentHashMap.newKeySet();
     private final Map<UUID, BukkitTask> noFallTasks = new ConcurrentHashMap<>();
@@ -41,6 +43,9 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
+        // Serialization
+        ConfigurationSerialization.registerClass(ProtectedCropInfo.class);
+
         // Register this class as a listener for EntityDamageEvent
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new NetheriteHoeAchievementListener(this), this); // Register new listener
@@ -52,6 +57,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
 
         this.classKey = new NamespacedKey(this, "class_name");
         this.classRegionManager = new ClassRegionManager(this);
+        this.protectedCropManager = new ProtectedCropManager(this);
 
         // Plugin startup logic
         this.nexusManager = new NexusManager(this);
@@ -63,6 +69,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         this.playerClassManager.loadClasses();
         this.classRegionManager.loadRegions();
         this.scoreboardManager.loadScoreboardVisibility();
+        this.protectedCropManager.loadCrops();
 
         // Registering events and commands
         getServer().getPluginManager().registerEvents(new NexusListener(this, nexusManager), this);
@@ -80,7 +87,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new ClassItemListener(this), this);
         getServer().getPluginManager().registerEvents(new ClassSelectionListener(this, playerClassManager), this);
         getServer().getPluginManager().registerEvents(new ClassItemRestrictionListener(this), this);
-        getServer().getPluginManager().registerEvents(new FarmerListener(this, playerClassManager), this);
+        getServer().getPluginManager().registerEvents(new FarmerListener(this, playerClassManager, protectedCropManager), this);
         this.getCommand("class").setExecutor(new ClassCommand(this, playerClassManager));
         this.getCommand("class").setTabCompleter(new ClassTabCompleter(playerClassManager));
         this.getCommand("nexus").setExecutor(new NexusAdminCommand(this, nexusManager));
@@ -147,6 +154,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         this.playerClassManager.saveClasses();
         this.classRegionManager.saveRegions();
         this.scoreboardManager.saveScoreboardVisibility();
+        this.protectedCropManager.saveCrops();
         saveAchievedNetheriteHoeBreak(); // Save achievement data
         getLogger().info("AnnihilationNexus plugin has been disabled!");
     }
@@ -284,6 +292,14 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
 
     public PlayerClassManager getPlayerClassManager() {
         return playerClassManager;
+    }
+
+    public ClassRegionManager getClassRegionManager() {
+        return classRegionManager;
+    }
+
+    public ProtectedCropManager getProtectedCropManager() {
+        return protectedCropManager;
     }
 
     public void reload() {
@@ -490,10 +506,6 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
 
     public NamespacedKey getClassKey() {
         return classKey;
-    }
-
-    public ClassRegionManager getClassRegionManager() {
-        return classRegionManager;
     }
 
     public Set<UUID> getNoFall() {
