@@ -69,7 +69,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         this.playerClassManager.loadClasses();
         this.classRegionManager.loadRegions();
         this.scoreboardManager.loadScoreboardVisibility();
-        this.protectedCropManager.loadCrops();
+        this.protectedCropManager.loadCropsAndStartGrowth();
 
         // Registering events and commands
         getServer().getPluginManager().registerEvents(new NexusListener(this, nexusManager), this);
