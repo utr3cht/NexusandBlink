@@ -78,7 +78,6 @@ public class FarmerListener implements Listener {
 
         // --- Crop Protection Check ---
         if (protectedCropManager.isProtected(blockLocation)) {
-            plugin.getLogger().info("[DEBUG] BlockBreakEvent at a protected location: " + blockLocation);
             // Protection is active, only the planter can break it, but only if it's fully grown.
             // If it's not fully grown, no one can break it.
             if (block.getBlockData() instanceof Ageable) {
@@ -86,12 +85,10 @@ public class FarmerListener implements Listener {
                 if (ageable.getAge() < ageable.getMaximumAge()) {
                     event.setCancelled(true);
                     player.sendMessage(ChatColor.RED + "This crop is still growing and cannot be broken.");
-                    plugin.getLogger().info("[DEBUG] Cancelled break event: Crop not fully grown.");
                     return;
                 }
             }
             // If it IS fully grown, the code proceeds, and the crop will be broken and replanted below.
-            plugin.getLogger().info("[DEBUG] Protected crop is fully grown, allowing break.");
         }
         // --- End Crop Protection Check ---
 
@@ -106,11 +103,9 @@ public class FarmerListener implements Listener {
         if (block.getBlockData() instanceof Ageable) {
             Ageable ageable = (Ageable) block.getBlockData();
             if (ageable.getAge() == ageable.getMaximumAge()) {
-                plugin.getLogger().info("[DEBUG] Farmer breaking fully grown crop at: " + blockLocation);
                 // It's a fully grown crop. Remove any existing protection before replanting.
                 // This ensures the growth task is cancelled and can be restarted for the new crop.
                 if (protectedCropManager.isProtected(blockLocation)) {
-                    plugin.getLogger().info("[DEBUG] Removing existing protection before replanting.");
                     protectedCropManager.removeCrop(blockLocation);
                 }
 
@@ -118,7 +113,6 @@ public class FarmerListener implements Listener {
                 new BukkitRunnable() {
                     @Override
                     public void run() {
-                        plugin.getLogger().info("[DEBUG] Running auto-replant task for: " + blockLocation);
                         Block blockBelow = block.getRelative(0, -1, 0);
                         if (blockBelow.getType() != Material.FARMLAND) {
                             blockBelow.setType(Material.FARMLAND);
@@ -133,7 +127,6 @@ public class FarmerListener implements Listener {
                         block.setBlockData(newCrop);
 
                         // Add to protected crops after replanting
-                        plugin.getLogger().info("[DEBUG] Adding new protection after replanting.");
                         protectedCropManager.addCrop(blockLocation, player.getUniqueId());
                     }
                 }.runTaskLater(plugin, plugin.getAutoReplantDelay() * 20L);
@@ -167,12 +160,10 @@ public class FarmerListener implements Listener {
         Location location = block.getLocation();
 
         if (protectedCropManager.isProtected(location)) {
-            plugin.getLogger().info("[DEBUG] BlockGrowEvent at protected location: " + location);
             if (event.getNewState().getBlockData() instanceof Ageable) {
                 Ageable ageable = (Ageable) event.getNewState().getBlockData();
                 if (ageable.getAge() == ageable.getMaximumAge()) {
                     // Crop is fully grown, remove protection
-                    plugin.getLogger().info("[DEBUG] Crop reached max age naturally. Removing protection.");
                     protectedCropManager.removeCrop(location);
                 }
             }
