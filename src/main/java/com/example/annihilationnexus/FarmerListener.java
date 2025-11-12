@@ -103,6 +103,12 @@ public class FarmerListener implements Listener {
         if (block.getBlockData() instanceof Ageable) {
             Ageable ageable = (Ageable) block.getBlockData();
             if (ageable.getAge() == ageable.getMaximumAge()) {
+                // It's a fully grown crop. Remove any existing protection before replanting.
+                // This ensures the growth task is cancelled and can be restarted for the new crop.
+                if (protectedCropManager.isProtected(blockLocation)) {
+                    protectedCropManager.removeCrop(blockLocation);
+                }
+
                 // Auto-replant
                 new BukkitRunnable() {
                     @Override
