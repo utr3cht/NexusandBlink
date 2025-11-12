@@ -71,12 +71,7 @@ public class BlinkListener implements Listener {
                 cooldowns.put(player.getUniqueId(), cooldownEndTime);
                 player.sendMessage("Cooldown: " + cooldownSeconds + " seconds.");
 
-                // If the player is still sneaking, restart the visualizer immediately
-                if (player.isSneaking()) {
-                    ability.startVisualizer();
-                }
-
-                // Update item name with cooldown
+                // Update the item name immediately
                 updateBlinkItemName(player, item, cooldownSeconds);
 
                 // Schedule a task to update the item name every second
@@ -84,18 +79,23 @@ public class BlinkListener implements Listener {
                     @Override
                     public void run() {
                         long timeLeft = cooldowns.getOrDefault(player.getUniqueId(), 0L) - System.currentTimeMillis();
-                        plugin.getLogger().info("Player " + player.getName() + " Blink Cooldown Left: " + (timeLeft / 1000 + 1) + "s");
+                        long secondsLeft = timeLeft / 1000; // Calculate seconds without adding 1 initially
+
                         if (timeLeft <= 0) {
                             // Cooldown expired, reset item name and remove from map
-                            updateBlinkItemName(player, item, 0);
+                            plugin.getLogger().info("Player " + player.getName() + " Blink Cooldown Left: READY"); // Or 0s
+                            updateBlinkItemName(player, item, 0); // Pass 0 to indicate ready
                             cooldowns.remove(player.getUniqueId());
                             this.cancel();
                         } else {
-                            // Update item name with remaining cooldown
-                            updateBlinkItemName(player, item, timeLeft / 1000 + 1);
+                            // If secondsLeft is 0, it means timeLeft is between 1 and 999 ms. Display 1s.
+                            // Otherwise, display secondsLeft + 1 (to round up to the next full second)
+                            long displaySeconds = secondsLeft + 1;
+                            plugin.getLogger().info("Player " + player.getName() + " Blink Cooldown Left: " + displaySeconds + "s");
+                            updateBlinkItemName(player, item, displaySeconds);
                         }
                     }
-                }.runTaskTimer(plugin, 20, 20); // Start after 1 second, repeat every second
+                }.runTaskTimer(plugin, 0, 20); // Start immediately, repeat every second
             }
         }
     }
@@ -113,7 +113,7 @@ public class BlinkListener implements Listener {
 
             // Found the Blink item, update its name
             if (remainingSeconds > 0) {
-                meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Blink " + ChatColor.RED + "(" + remainingSeconds + "s)");
+                meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Blink " + ChatColor.RED  + " " + remainingSeconds);
             } else {
                 meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Blink " + ChatColor.GREEN + "READY");
             }

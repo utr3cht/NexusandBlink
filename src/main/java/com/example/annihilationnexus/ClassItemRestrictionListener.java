@@ -6,6 +6,9 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.ItemStack;
 
+import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.inventory.PlayerInventory;
+
 public class ClassItemRestrictionListener implements Listener {
 
     private final AnnihilationNexus plugin;
@@ -16,31 +19,40 @@ public class ClassItemRestrictionListener implements Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        // Check if the clicked item is a class item
         ItemStack clickedItem = event.getCurrentItem();
-        if (clickedItem == null || !plugin.isClassItem(clickedItem)) {
+        ItemStack cursorItem = event.getCursor();
+
+        // Check if the clicked item or the item on the cursor is a class item
+        boolean isClassItemInvolved = (clickedItem != null && plugin.isClassItem(clickedItem)) ||
+                                      (cursorItem != null && plugin.isClassItem(cursorItem));
+
+        if (!isClassItemInvolved) {
             return;
         }
 
-        // If the item is a class item, prevent it from being placed in non-player inventories
-        if (event.getClickedInventory() != null && event.getClickedInventory().getHolder() != event.getWhoClicked()) {
+        // If a class item is involved, prevent it from being moved into non-player inventories
+        if (event.getClickedInventory() != null && !(event.getClickedInventory() instanceof PlayerInventory)) {
+            // This handles clicks inside the non-player inventory
             event.setCancelled(true);
         }
-        // Also prevent moving class items out of player inventory into other inventories
-        if (event.getWhoClicked().getOpenInventory().getBottomInventory().getHolder() == event.getWhoClicked() &&
-            event.getClickedInventory() != event.getWhoClicked().getInventory() &&
-            event.getWhoClicked().getOpenInventory().getTopInventory().getHolder() != event.getWhoClicked()) {
-            event.setCancelled(true);
+
+        // This handles shift-clicking a class item from the player inventory to the other inventory
+        if (event.isShiftClick() && event.getClickedInventory() instanceof PlayerInventory) {
+            if (clickedItem != null && plugin.isClassItem(clickedItem)) {
+                 event.setCancelled(true);
+            }
         }
     }
 
     @EventHandler
     public void onInventoryDrag(InventoryDragEvent event) {
-        // Check if any of the dragged items are class items
-        for (ItemStack item : event.getNewItems().values()) {
-            if (item != null && plugin.isClassItem(item)) {
-                // If a class item is being dragged into a non-player inventory, cancel the event
-                if (event.getInventory().getHolder() != event.getWhoClicked()) {
+        // If the dragged item is a class item
+        if (plugin.isClassItem(event.getOldCursor())) {
+            // Check if any of the affected slots are outside the player's inventory
+            for (int slot : event.getRawSlots()) {
+                // Raw slots are unique integers for each slot in the combined inventory view.
+                // If a raw slot index is less than the size of the top inventory, it's not in the player inventory.
+                if (slot < event.getView().getTopInventory().getSize()) {
                     event.setCancelled(true);
                     return;
                 }

@@ -26,15 +26,13 @@ public class DasherAbility {
     private Material originalMaterial;
     private BlockData originalBlockData;
 
-    private static final int MIN_BLINK_DISTANCE = 5;
-    private static final int MAX_BLINK_DISTANCE = 20;
-
     public DasherAbility(Player player, AnnihilationNexus plugin) {
         this.player = player;
         this.plugin = plugin;
     }
 
     public void startVisualizer() {
+        plugin.getLogger().info("startVisualizer called for " + player.getName()); // DEBUG
         if (visualizerTask != null) {
             visualizerTask.cancel();
             revertVisualizedBlock(); // Revert previous block if task is cancelled
@@ -45,20 +43,20 @@ public class DasherAbility {
             public void run() {
                 // Self-termination check
                 if (!player.isSneaking() || !plugin.isBlinkItem(player.getInventory().getItemInMainHand())) {
+                    plugin.getLogger().info("Visualizer task self-terminating for " + player.getName() + ". isSneaking: " + player.isSneaking() + ", isBlinkItem: " + plugin.isBlinkItem(player.getInventory().getItemInMainHand())); // DEBUG
                     stopVisualizer();
                     return;
                 }
 
+                // Always revert the previous block first to ensure cleanup.
+                revertVisualizedBlock();
+
                 Location newTarget = calculateTeleportLocation();
+                liveTargetLocation = newTarget; // Update the live target for the blink method
 
-                // Only update block if target location has changed
-                if (newTarget != null && (liveTargetLocation == null || !liveTargetLocation.equals(newTarget))) {
-                    revertVisualizedBlock(); // Revert old block
-
-                    liveTargetLocation = newTarget;
-
+                if (newTarget != null) {
                     // Determine visualizer block material based on distance
-                    double distance = player.getLocation().distance(liveTargetLocation);
+                    double distance = player.getLocation().distance(newTarget);
                     Material visualizerMaterial;
                     if (distance <= 10) {
                         visualizerMaterial = Material.EMERALD_BLOCK;
@@ -68,21 +66,19 @@ public class DasherAbility {
                         visualizerMaterial = Material.DIAMOND_BLOCK;
                     }
 
-                    visualizedBlock = liveTargetLocation.getBlock().getRelative(0, -1, 0);
+                    visualizedBlock = newTarget.getBlock().getRelative(0, -1, 0);
                     originalMaterial = visualizedBlock.getType();
                     originalBlockData = visualizedBlock.getBlockData();
 
                     // Set temporary block using packets
                     player.sendBlockChange(visualizedBlock.getLocation(), visualizerMaterial.createBlockData());
-                } else if (newTarget == null) {
-                    revertVisualizedBlock();
-                    liveTargetLocation = null;
                 }
             }
-        }.runTaskTimer(plugin, 0, 5); // Update every 5 ticks
+        }.runTaskTimer(plugin, 0, 1); // Update every tick for smoother tracking
     }
 
     public void stopVisualizer() {
+        plugin.getLogger().info("stopVisualizer called for " + player.getName()); // DEBUG
         if (visualizerTask != null) {
             visualizerTask.cancel();
             visualizerTask = null;
@@ -92,7 +88,8 @@ public class DasherAbility {
     }
 
     public double blink() {
-        Location targetLocation = calculateTeleportLocation();
+        // Use the location from the visualizer, not recalculate
+        Location targetLocation = liveTargetLocation;
 
         if (targetLocation == null) {
             player.sendMessage("Cannot find a safe location to blink to.");
@@ -104,21 +101,25 @@ public class DasherAbility {
         Location originalLocation = player.getLocation();
 
         // Preserve player's facing direction
-        targetLocation.setYaw(player.getLocation().getYaw());
-        targetLocation.setPitch(player.getLocation().getPitch());
+        Location teleportDest = targetLocation.clone(); // Clone to avoid modifying liveTargetLocation
+        teleportDest.setYaw(player.getLocation().getYaw());
+        teleportDest.setPitch(player.getLocation().getPitch());
 
-        player.teleport(targetLocation);
+        player.teleport(teleportDest);
         player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
 
         // Spawn particles
-        spawnBlinkTrail(originalLocation, targetLocation);
-        spawnDestinationCircle(targetLocation);
+        spawnBlinkTrail(originalLocation, teleportDest);
+        spawnDestinationCircle(teleportDest);
+
+        // Stop and reset the visualizer state after a successful blink
+        stopVisualizer();
 
         return distance;
     }
 
     private Location calculateTeleportLocation() {
-        BlockIterator iterator = new BlockIterator(player.getEyeLocation(), 0, MAX_BLINK_DISTANCE);
+        BlockIterator iterator = new BlockIterator(player.getEyeLocation(), 0, plugin.getDasherMaxBlinkDistance());
         Block targetBlock = null;
         while (iterator.hasNext()) {
             Block block = iterator.next();
@@ -135,7 +136,7 @@ public class DasherAbility {
         Location targetLocation = targetBlock.getLocation();
         double distance = player.getLocation().distance(targetLocation);
 
-        if (distance >= MIN_BLINK_DISTANCE) {
+        if (distance >= plugin.getDasherMinBlinkDistance()) {
             Location safeLocation = findSafeLocation(targetLocation);
             if (safeLocation != null) {
                 return safeLocation.clone().add(0.5, 0, 0.5);

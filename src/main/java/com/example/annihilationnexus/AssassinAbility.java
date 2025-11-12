@@ -89,7 +89,7 @@ public class AssassinAbility {
                     String baseName = ChatColor.GRAY + "Leap";
                     long remainingCooldown = getRemainingCooldown();
                     if (remainingCooldown > 0) {
-                        meta.setDisplayName(baseName + ChatColor.RED + " " + remainingCooldown + "s");
+                        meta.setDisplayName(baseName + ChatColor.RED + " " + remainingCooldown);
                     } else {
                         meta.setDisplayName(baseName + ChatColor.GREEN + " READY");
                     }

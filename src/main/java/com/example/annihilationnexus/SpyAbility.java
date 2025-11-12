@@ -163,7 +163,7 @@ public class SpyAbility {
                     String baseName = ChatColor.AQUA + "Flee";
                     long remainingCooldown = getRemainingCooldown();
                     if (remainingCooldown > 0) {
-                        meta.setDisplayName(baseName + ChatColor.RED + " " + remainingCooldown + "s");
+                        meta.setDisplayName(baseName + ChatColor.RED + " " + remainingCooldown);
                     } else {
                         meta.setDisplayName(baseName + ChatColor.GREEN + " READY");
                     }

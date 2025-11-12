@@ -24,6 +24,36 @@ scorpio:
   hook-cooldown: 3
   enemy-pull-fall-immunity: 10
   friendly-pull-fall-immunity: 5
+  stuck-duration-seconds: 1.5
+  distance-pull-multiplier: 0.1
+assassin:
+  leap-cooldown: 10
+  leap-strength: 1.2
+farmer:
+  feast:
+    cooldown: 30
+    radius: 13
+    saturation: 4.0
+  famine:
+    cooldown: 90
+    radius: 13
+    hunger-level: 20
+    hunger-duration: 30
+    food-level: 3
+  auto-replant-delay: 3 # in seconds
+  extra-drops:
+    grass:
+      seed-chance: 0.1 # 10%
+      potato-chance: 0.05 # 5%
+      carrot-chance: 0.05 # 5%
+    crops:
+      apple-chance: 0.0025 # 1/400
+      rare-material-chance: 0.01 # 1/100
+  eating-bonus:
+    chance: 0.3 # 30%
+    extra-health: 2.0 # 1 heart
+    extra-food: 2
+  crop-protection-duration: 80 # in seconds
 
 # Scoreboard Settings
 # You can use placeholders:
@@ -42,3 +72,14 @@ scoreboard:
 # Transporter Ability Settings
 transporter:
   tp-distance-limit: 20.0
+
+# Dasher Ability Settings
+dasher:
+  max-blink-distance: 15
+  min-blink-distance: 3
+
+# Achievement Settings
+achievements:
+  netherite-hoe-break-message:
+    en: "&aAchievement Unlocked: &fNetherite Hoe Breaker!"
+    ja: "&a実績解除: &fネザライトのクワ破壊者！"

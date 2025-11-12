@@ -133,7 +133,7 @@ public class FarmerAbility {
                 long remainingCooldown = getRemainingCooldown(feastCooldowns, player.getUniqueId(), plugin.getFeastCooldown());
 
                 if (remainingCooldown > 0) {
-                    meta.setDisplayName(originalDisplayName + ChatColor.RED + remainingCooldown );
+                    meta.setDisplayName(originalDisplayName + ChatColor.RED + " " + remainingCooldown );
                 } else {
                     meta.setDisplayName(originalDisplayName);
                 }
@@ -148,7 +148,7 @@ public class FarmerAbility {
                 long remainingCooldown = getRemainingCooldown(famineCooldowns, player.getUniqueId(), plugin.getFamineCooldown());
 
                 if (remainingCooldown > 0) {
-                    meta.setDisplayName(originalDisplayName + ChatColor.RED + remainingCooldown);
+                    meta.setDisplayName(originalDisplayName + ChatColor.RED + " " + remainingCooldown);
                 } else {
                     meta.setDisplayName(originalDisplayName);
                 }

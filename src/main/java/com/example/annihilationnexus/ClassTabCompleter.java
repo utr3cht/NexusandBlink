@@ -9,27 +9,42 @@ import org.bukkit.command.TabCompleter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class ClassTabCompleter implements TabCompleter {
 
-    private final PlayerClassManager playerClassManager;
+    private final List<String> CLASS_NAMES = Arrays.asList("dasher", "scout", "scorpio", "assassin", "spy", "transporter", "farmer");
 
     public ClassTabCompleter(PlayerClassManager playerClassManager) {
-        this.playerClassManager = playerClassManager;
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) { // Suggest online players for the first argument (player name)
-            List<String> playerNames = new ArrayList<>();
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                playerNames.add(player.getName());
+        List<String> completions = new ArrayList<>();
+        if (args.length == 1) {
+            if (sender instanceof Player) {
+                completions.add("item");
             }
-            return playerNames;
+            if (sender.hasPermission("annihilation.admin")) {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (player.getName().toLowerCase().startsWith(args[0].toLowerCase())) {
+                        completions.add(player.getName());
+                    }
+                }
+            }
+            return completions;
         }
-        if (args.length == 2) { // No suggestions for class names
-            return new ArrayList<>(); // Return empty list to prevent default tab completion
+
+        if (args.length == 2) {
+            if (sender.hasPermission("annihilation.admin")) {
+                // Check if the first argument is a player name, not "item"
+                if (Bukkit.getPlayer(args[0]) != null) {
+                    return CLASS_NAMES.stream()
+                            .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
+                            .collect(Collectors.toList());
+                }
+            }
         }
-        return null;
+        return new ArrayList<>();
     }
 }

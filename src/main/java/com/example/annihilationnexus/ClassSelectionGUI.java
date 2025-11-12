@@ -80,6 +80,16 @@ public class ClassSelectionGUI {
         transporter.setItemMeta(transporterMeta);
         gui.setItem(5, transporter);
 
+        // Farmer
+        ItemStack farmer = new ItemStack(Material.WHEAT);
+        ItemMeta farmerMeta = farmer.getItemMeta();
+        if (farmerMeta != null) {
+            farmerMeta.setDisplayName(ChatColor.YELLOW + "Farmer");
+            farmerMeta.setLore(Arrays.asList(ChatColor.GRAY + "Sustains the team with food and resources."));
+            farmer.setItemMeta(farmerMeta);
+        }
+        gui.setItem(6, farmer);
+
 
         player.openInventory(gui);
     }

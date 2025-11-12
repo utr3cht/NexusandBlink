@@ -1,5 +1,5 @@
 name: Annihilation
-version: 2.0
+version: '${project.version}'
 main: com.example.annihilationnexus.AnnihilationNexus
 api-version: '1.21'
 authors: ['Utr3cht']
