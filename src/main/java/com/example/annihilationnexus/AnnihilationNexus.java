@@ -70,13 +70,13 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         this.classRegionManager.loadRegions();
         this.scoreboardManager.loadScoreboardVisibility();
 
-        // Delay crop loading by one tick to ensure worlds are loaded
+        // Delay crop loading by 20 ticks (1 second) to ensure worlds are loaded
         new BukkitRunnable() {
             @Override
             public void run() {
                 protectedCropManager.loadCropsAndStartGrowth();
             }
-        }.runTaskLater(this, 1L);
+        }.runTaskLater(this, 20L);
 
         // Registering events and commands
         getServer().getPluginManager().registerEvents(new NexusListener(this, nexusManager), this);
