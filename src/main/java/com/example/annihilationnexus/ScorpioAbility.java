@@ -1,5 +1,6 @@
 package com.example.annihilationnexus;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -10,6 +11,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.Team;
 import org.bukkit.util.Vector;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -71,10 +74,12 @@ public class ScorpioAbility {
                                 return;
                             }
                         } else { // Left-click pulls you to any hit player
-                            pullToTarget(hitPlayer);
-                            hook.remove();
-                            this.cancel();
-                            return;
+                            if (isFriendly(hitPlayer)) {
+                                pullToTarget(hitPlayer);
+                                hook.remove();
+                                this.cancel();
+                                return;
+                            }
                         }
                     }
                 }
@@ -176,8 +181,16 @@ public class ScorpioAbility {
     }
 
     private boolean isFriendly(Player otherPlayer) {
-        // Assuming a team system is in place. For now, we'll consider everyone an enemy.
-        // This should be replaced with actual team logic.
+        Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
+        Team casterTeam = scoreboard.getEntryTeam(this.player.getName());
+        Team targetTeam = scoreboard.getEntryTeam(otherPlayer.getName());
+
+        // If either player is not on a team, they are not friendly.
+        // If both are on a team, check if the teams are the same.
+        if (casterTeam != null && casterTeam.equals(targetTeam)) {
+            return true;
+        }
+
         return false;
     }
 

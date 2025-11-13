@@ -1,5 +1,6 @@
 package com.example.annihilationnexus;
 
+import org.bukkit.Bukkit;
 import org.bukkit.block.data.type.Farmland;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -17,6 +18,8 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.Team;
 
 import java.util.Random;
 import java.util.UUID;
@@ -78,17 +81,37 @@ public class FarmerListener implements Listener {
 
         // --- Crop Protection Check ---
         if (protectedCropManager.isProtected(blockLocation)) {
-            // Protection is active, only the planter can break it, but only if it's fully grown.
-            // If it's not fully grown, no one can break it.
-            if (block.getBlockData() instanceof Ageable) {
-                Ageable ageable = (Ageable) block.getBlockData();
-                if (ageable.getAge() < ageable.getMaximumAge()) {
-                    event.setCancelled(true);
-                    player.sendMessage(ChatColor.RED + "This crop is still growing and cannot be broken.");
-                    return;
+            ProtectedCropInfo cropInfo = protectedCropManager.getCropInfo(blockLocation);
+            if (cropInfo == null) { // Should not happen, but good practice
+                return;
+            }
+
+            UUID planterUUID = cropInfo.getPlanterUUID();
+            UUID breakerUUID = player.getUniqueId();
+
+            // Planter can always break their own crops, so we only check if it's someone else
+            if (!planterUUID.equals(breakerUUID)) {
+                Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
+                Team planterTeam = scoreboard.getEntryTeam(Bukkit.getOfflinePlayer(planterUUID).getName());
+                Team breakerTeam = scoreboard.getEntryTeam(player.getName());
+
+                // If they are on the same team
+                if (planterTeam != null && planterTeam.equals(breakerTeam)) {
+                    // Teammates can only break fully grown crops
+                    if (block.getBlockData() instanceof Ageable) {
+                        Ageable ageable = (Ageable) block.getBlockData();
+                        if (ageable.getAge() < ageable.getMaximumAge()) {
+                            event.setCancelled(true);
+                            player.sendMessage(ChatColor.RED + "This crop is still growing and cannot be broken by teammates.");
+                            return;
+                        }
+                    }
+                } else {
+                    // Enemy teams can always break protected crops.
+                    // We remove the protection so it doesn't get auto-replanted by the original farmer's logic.
+                    protectedCropManager.removeCrop(blockLocation);
                 }
             }
-            // If it IS fully grown, the code proceeds, and the crop will be broken and replanted below.
         }
         // --- End Crop Protection Check ---
 

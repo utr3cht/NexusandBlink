@@ -8,6 +8,9 @@ commands:
   class:
     description: Select your class.
     usage: /class [class_name]
+  team:
+    description: Join a team.
+    usage: /team <team_name>
   nexus:
     description: Admin commands for Nexus management.
     usage: /nexus [create|destroy|sethealth]

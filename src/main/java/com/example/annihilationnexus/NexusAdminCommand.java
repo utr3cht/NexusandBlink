@@ -6,6 +6,8 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.Locale;
+
 public class NexusAdminCommand implements CommandExecutor {
 
     private final NexusManager nexusManager;
@@ -36,9 +38,10 @@ public class NexusAdminCommand implements CommandExecutor {
                     sender.sendMessage(ChatColor.RED + "Usage: /nexus create <team>");
                     return false;
                 }
-                String team = args[1];
+                String team = args[1].toUpperCase(Locale.ROOT);
                 nexusManager.createNexus(team, player.getLocation());
                 sender.sendMessage(ChatColor.GREEN + "Nexus for team " + team + " created at your location.");
+                plugin.getScoreboardManager().updateForAllPlayers();
                 break;
             case "delete":
                 if (args.length != 2) {
@@ -62,7 +65,7 @@ public class NexusAdminCommand implements CommandExecutor {
                     sender.sendMessage(ChatColor.RED + "Usage: /nexus setnexushp <team> <hp>");
                     return false;
                 }
-                String teamName = args[1];
+                String teamName = args[1].toUpperCase(Locale.ROOT);
                 Nexus teamNexus = nexusManager.getNexus(teamName);
                 if (teamNexus == null) {
                     sender.sendMessage(ChatColor.RED + "Nexus for team " + teamName + " not found.");

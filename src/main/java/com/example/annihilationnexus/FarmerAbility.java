@@ -1,5 +1,6 @@
 package com.example.annihilationnexus;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
 import org.bukkit.Location;
@@ -11,9 +12,11 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.Team;
+
 import java.util.ArrayList;
 import java.util.List;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -46,12 +49,19 @@ public class FarmerAbility {
         player.removePotionEffect(PotionEffectType.HUNGER);
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_BURP, 1.0f, 1.0f); // Feast sound
 
+        Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
+        Team casterTeam = scoreboard.getEntryTeam(player.getName());
         int affectedCount = 0;
+
         for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
             if (entity instanceof Player) {
                 Player target = (Player) entity;
-                String targetClass = plugin.getPlayerClassManager().getPlayerClass(target.getUniqueId());
-                if (targetClass != null && targetClass.equalsIgnoreCase("farmer")) {
+                if (target.equals(player)) continue; // Self is already affected
+
+                // --- Team Check ---
+                Team targetTeam = scoreboard.getEntryTeam(target.getName());
+                if (casterTeam != null && casterTeam.equals(targetTeam)) {
+                    // It's a teammate, apply the effect regardless of class
                     target.setFoodLevel(20);
                     target.setSaturation(target.getSaturation() + saturation);
                     target.removePotionEffect(PotionEffectType.HUNGER);
@@ -71,7 +81,7 @@ public class FarmerAbility {
             center.getWorld().spawnParticle(org.bukkit.Particle.DUST, new Location(center.getWorld(), x, center.getY(), z), 1, dustOptions);
         }
 
-        player.sendMessage(ChatColor.GREEN + "You used Feast, affecting " + affectedCount + " other farmers.");
+        player.sendMessage(ChatColor.GREEN + "You used Feast, affecting " + affectedCount + " teammates.");
         feastCooldowns.put(player.getUniqueId(), System.currentTimeMillis());
     }
 
@@ -88,13 +98,18 @@ public class FarmerAbility {
         int foodLevel = plugin.getFamineFoodLevel();
         int affectedCount = 0;
 
+        Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
+        Team casterTeam = scoreboard.getEntryTeam(player.getName());
+
         for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
             if (entity instanceof Player) {
                 Player target = (Player) entity;
                 if (target.equals(player)) continue; // Don't affect self
 
-                String targetClass = plugin.getPlayerClassManager().getPlayerClass(target.getUniqueId());
-                if (targetClass == null || !targetClass.equalsIgnoreCase("farmer")) {
+                // --- Team Check ---
+                Team targetTeam = scoreboard.getEntryTeam(target.getName());
+                // Affect if not on the same team (or if one is not on a team)
+                if (casterTeam == null || !casterTeam.equals(targetTeam)) {
                     target.setFoodLevel(foodLevel);
                     target.addPotionEffect(new PotionEffect(PotionEffectType.HUNGER, hungerDuration, hungerLevel - 1, true, true));
                     target.sendMessage(ChatColor.DARK_RED + "You feel a sudden famine, caused by " + player.getName() + "!");

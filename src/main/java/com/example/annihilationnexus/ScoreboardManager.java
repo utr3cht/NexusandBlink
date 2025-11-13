@@ -18,6 +18,9 @@ import java.io.IOException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
+import java.util.Set;
+import java.util.HashSet;
+
 public class ScoreboardManager {
 
     private final AnnihilationNexus plugin;
@@ -43,7 +46,16 @@ public class ScoreboardManager {
         }
 
         Scoreboard scoreboard = player.getScoreboard();
+
+        // If a new scoreboard is needed, back up existing team info
+        Map<String, Set<String>> teamsBackup = null;
         if (scoreboard == null || scoreboard.getObjective("annihilation") == null) {
+            if (scoreboard != null) {
+                teamsBackup = new HashMap<>();
+                for (Team team : scoreboard.getTeams()) {
+                    teamsBackup.put(team.getName(), new HashSet<>(team.getEntries()));
+                }
+            }
             scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
         }
 
@@ -54,6 +66,19 @@ public class ScoreboardManager {
             objective.setDisplaySlot(DisplaySlot.SIDEBAR);
         } else {
             objective.setDisplayName(title);
+        }
+
+        // Restore teams from backup if a new scoreboard was created
+        if (teamsBackup != null) {
+            for (Map.Entry<String, Set<String>> entry : teamsBackup.entrySet()) {
+                String teamName = entry.getKey();
+                Set<String> members = entry.getValue();
+                Team newTeam = scoreboard.registerNewTeam(teamName);
+                configureTeam(newTeam, teamName); // This applies prefix, friendly fire settings, etc.
+                for (String member : members) {
+                    newTeam.addEntry(member);
+                }
+            }
         }
         
         // Clear old scores to prevent duplicates
@@ -101,7 +126,7 @@ public class ScoreboardManager {
         player.sendMessage(ChatColor.GREEN + "Scoreboard visibility toggled " + (!currentVisibility ? "on" : "off") + ".");
     }
 
-    private ChatColor getTeamColor(String teamName) {
+    public ChatColor getTeamColor(String teamName) {
         // Placeholder: Implement actual team color logic here
         // For example, read from config or a team manager
         switch (teamName.toLowerCase()) {
@@ -141,5 +166,61 @@ public class ScoreboardManager {
             plugin.getLogger().severe("Could not save scoreboard_visibility.yml!");
             e.printStackTrace();
         }
+    }
+
+    private void configureTeam(Team team, String teamName) {
+        ChatColor color = getTeamColor(teamName);
+        team.setColor(color);
+        team.setPrefix(color + "");
+        boolean ffEnabled = plugin.isFriendlyFireEnabled();
+        plugin.getLogger().info("[DEBUG] configureTeam for '" + teamName + "'. Setting friendly fire to: " + ffEnabled);
+        team.setAllowFriendlyFire(ffEnabled); // Standard for Annihilation
+        team.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
+    }
+
+    private void updateTeamOnScoreboard(Scoreboard scoreboard, Player player, String teamName) {
+        if (scoreboard == null) return;
+        String playerName = player.getName();
+
+        Team newTeam = scoreboard.getTeam(teamName);
+        if (newTeam == null) {
+            newTeam = scoreboard.registerNewTeam(teamName);
+            configureTeam(newTeam, teamName);
+        }
+
+        Team currentTeam = scoreboard.getEntryTeam(playerName);
+        if (currentTeam != null && !currentTeam.equals(newTeam)) {
+            currentTeam.removeEntry(playerName);
+        }
+
+        if (!newTeam.hasEntry(playerName)) {
+            newTeam.addEntry(playerName);
+        }
+
+        player.setDisplayName(getTeamColor(teamName) + playerName + ChatColor.RESET);
+    }
+
+    public void setPlayerTeam(Player player, String teamName) {
+        Scoreboard mainScoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
+        Scoreboard playerSB = player.getScoreboard();
+
+        // Update the main scoreboard for server-wide compatibility
+        updateTeamOnScoreboard(mainScoreboard, player, teamName);
+
+        // If the player has a different scoreboard (for the sidebar), update it as well.
+        if (playerSB != null && playerSB != mainScoreboard) {
+            updateTeamOnScoreboard(playerSB, player, teamName);
+        }
+    }
+
+    public String getPlayerTeamName(Player player) {
+        Scoreboard scoreboard = player.getScoreboard();
+        if (scoreboard != null) {
+            Team team = scoreboard.getEntryTeam(player.getName());
+            if (team != null) {
+                return team.getName();
+            }
+        }
+        return null;
     }
 }
