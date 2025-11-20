@@ -3,9 +3,11 @@ package com.example.annihilationnexus;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.util.StringUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class NexusAdminTabCompleter implements TabCompleter {
@@ -18,12 +20,20 @@ public class NexusAdminTabCompleter implements TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        List<String> completions = new ArrayList<>();
+        List<String> candidates = new ArrayList<>();
+
         if (args.length == 1) {
-            return Arrays.asList("create", "delete", "setnexushp");
+            candidates.addAll(Arrays.asList("create", "destroy", "sethealth"));
+            StringUtil.copyPartialMatches(args[0], candidates, completions);
+        } else if (args.length == 2) {
+            if (args[0].equalsIgnoreCase("destroy") || args[0].equalsIgnoreCase("sethealth")) {
+                candidates.addAll(nexusManager.getAllNexuses().keySet());
+                StringUtil.copyPartialMatches(args[1], candidates, completions);
+            }
+            // For 'create', no specific second argument needed, user types name
         }
-        if (args.length == 2 && (args[0].equalsIgnoreCase("create") || args[0].equalsIgnoreCase("setnexushp"))) {
-            return new ArrayList<>(nexusManager.getAllNexuses().keySet());
-        }
-        return null;
+        Collections.sort(completions);
+        return completions;
     }
 }

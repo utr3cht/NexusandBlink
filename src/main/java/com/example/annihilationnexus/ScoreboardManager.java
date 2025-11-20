@@ -25,11 +25,15 @@ public class ScoreboardManager {
 
     private final AnnihilationNexus plugin;
     private final NexusManager nexusManager;
+    private final TeamColorManager teamColorManager;
+    private final PlayerTeamManager playerTeamManager;
     private final Map<UUID, Boolean> scoreboardVisibility = new HashMap<>(); // Player UUID -> is visible?
 
-    public ScoreboardManager(AnnihilationNexus plugin, NexusManager nexusManager) {
+    public ScoreboardManager(AnnihilationNexus plugin, NexusManager nexusManager, TeamColorManager teamColorManager, PlayerTeamManager playerTeamManager) {
         this.plugin = plugin;
         this.nexusManager = nexusManager;
+        this.teamColorManager = teamColorManager;
+        this.playerTeamManager = playerTeamManager;
         loadScoreboardVisibility();
     }
 
@@ -127,8 +131,12 @@ public class ScoreboardManager {
     }
 
     public ChatColor getTeamColor(String teamName) {
-        // Placeholder: Implement actual team color logic here
-        // For example, read from config or a team manager
+        // First, check for a custom color
+        ChatColor customColor = teamColorManager.getTeamColor(teamName);
+        if (customColor != null) {
+            return customColor;
+        }
+        // Fallback to default colors
         switch (teamName.toLowerCase()) {
             case "red": return ChatColor.RED;
             case "blue": return ChatColor.BLUE;
@@ -173,12 +181,11 @@ public class ScoreboardManager {
         team.setColor(color);
         team.setPrefix(color + "");
         boolean ffEnabled = plugin.isFriendlyFireEnabled();
-        plugin.getLogger().info("[DEBUG] configureTeam for '" + teamName + "'. Setting friendly fire to: " + ffEnabled);
         team.setAllowFriendlyFire(ffEnabled); // Standard for Annihilation
-        team.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
+        team.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.ALWAYS);
     }
 
-    private void updateTeamOnScoreboard(Scoreboard scoreboard, Player player, String teamName) {
+    private void addPlayerToTeamOnScoreboard(Scoreboard scoreboard, Player player, String teamName) {
         if (scoreboard == null) return;
         String playerName = player.getName();
 
@@ -188,29 +195,33 @@ public class ScoreboardManager {
             configureTeam(newTeam, teamName);
         }
 
+        // Remove player from their old team on this specific scoreboard
         Team currentTeam = scoreboard.getEntryTeam(playerName);
         if (currentTeam != null && !currentTeam.equals(newTeam)) {
             currentTeam.removeEntry(playerName);
         }
 
+        // Add player to the new team if they aren't already on it
         if (!newTeam.hasEntry(playerName)) {
             newTeam.addEntry(playerName);
         }
-
-        player.setDisplayName(getTeamColor(teamName) + playerName + ChatColor.RESET);
     }
 
     public void setPlayerTeam(Player player, String teamName) {
-        Scoreboard mainScoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
-        Scoreboard playerSB = player.getScoreboard();
-
-        // Update the main scoreboard for server-wide compatibility
-        updateTeamOnScoreboard(mainScoreboard, player, teamName);
-
-        // If the player has a different scoreboard (for the sidebar), update it as well.
-        if (playerSB != null && playerSB != mainScoreboard) {
-            updateTeamOnScoreboard(playerSB, player, teamName);
+        // Update the team for the player on every online player's scoreboard
+        for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+            Scoreboard playerScoreboard = onlinePlayer.getScoreboard();
+            // Ensure we are not modifying the main scoreboard if the player has a custom one
+            if (playerScoreboard != null && playerScoreboard != Bukkit.getScoreboardManager().getMainScoreboard()) {
+                addPlayerToTeamOnScoreboard(playerScoreboard, player, teamName);
+            }
         }
+
+        // Also, always update the main scoreboard for server-wide compatibility and for new players.
+        addPlayerToTeamOnScoreboard(Bukkit.getScoreboardManager().getMainScoreboard(), player, teamName);
+
+        // Finally, set the display name for the player who changed teams. This affects chat.
+        player.setDisplayName(getTeamColor(teamName) + player.getName() + ChatColor.RESET);
     }
 
     public String getPlayerTeamName(Player player) {
@@ -222,5 +233,38 @@ public class ScoreboardManager {
             }
         }
         return null;
+    }
+
+    public void updateTeamConfiguration(String teamName) {
+        String upperTeamName = teamName.toUpperCase();
+
+        // Update team visuals on all scoreboards
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            Scoreboard sb = p.getScoreboard();
+            if (sb != null) {
+                Team team = sb.getTeam(upperTeamName);
+                if (team != null) {
+                    configureTeam(team, upperTeamName);
+                }
+            }
+        }
+        // Also update the main scoreboard
+        Scoreboard mainSb = Bukkit.getScoreboardManager().getMainScoreboard();
+        Team mainTeam = mainSb.getTeam(upperTeamName);
+        if (mainTeam != null) {
+            configureTeam(mainTeam, upperTeamName);
+        }
+
+        // Update display name for all players on the affected team
+        ChatColor newColor = getTeamColor(upperTeamName);
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            String playerTeam = playerTeamManager.getPlayerTeam(p.getUniqueId());
+            if (playerTeam != null && playerTeam.equalsIgnoreCase(upperTeamName)) {
+                p.setDisplayName(newColor + p.getName() + ChatColor.RESET);
+            }
+        }
+
+        // Refresh all scoreboards to show changes (e.g., nexus status color)
+        updateForAllPlayers();
     }
 }

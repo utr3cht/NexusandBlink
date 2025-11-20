@@ -83,7 +83,6 @@ public class BlinkListener implements Listener {
 
                         if (timeLeft <= 0) {
                             // Cooldown expired, reset item name and remove from map
-                            plugin.getLogger().info("Player " + player.getName() + " Blink Cooldown Left: READY"); // Or 0s
                             updateBlinkItemName(player, item, 0); // Pass 0 to indicate ready
                             cooldowns.remove(player.getUniqueId());
                             this.cancel();
@@ -91,7 +90,6 @@ public class BlinkListener implements Listener {
                             // If secondsLeft is 0, it means timeLeft is between 1 and 999 ms. Display 1s.
                             // Otherwise, display secondsLeft + 1 (to round up to the next full second)
                             long displaySeconds = secondsLeft + 1;
-                            plugin.getLogger().info("Player " + player.getName() + " Blink Cooldown Left: " + displaySeconds + "s");
                             updateBlinkItemName(player, item, displaySeconds);
                         }
                     }

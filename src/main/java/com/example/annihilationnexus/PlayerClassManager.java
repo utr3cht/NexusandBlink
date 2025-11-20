@@ -10,6 +10,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.Set;
@@ -87,9 +89,7 @@ public class PlayerClassManager {
     }
 
     public void setPlayerClass(UUID playerId, String className) {
-        plugin.getLogger().info("setPlayerClass called for player " + playerId + " to class " + className);
         String previousClass = playerClasses.get(playerId);
-        plugin.getLogger().info("Previous class for " + playerId + ": " + previousClass);
 
         playerClasses.put(playerId, className);
         Player player = plugin.getServer().getPlayer(playerId);
@@ -98,7 +98,6 @@ public class PlayerClassManager {
         // Before removing old abilities, check if the player was Transporter
         // and destroy their portals
         if (previousClass != null && previousClass.equalsIgnoreCase("transporter")) {
-            plugin.getLogger().info("Player " + playerId + " was Transporter. Attempting to destroy portals.");
             TransporterAbility existingTransporterAbility = transporterAbilities.get(playerId);
             if (existingTransporterAbility != null) {
                 existingTransporterAbility.destroyAllPortalsForPlayer(playerId);
@@ -170,7 +169,6 @@ public class PlayerClassManager {
 
     public TransporterAbility getTransporterAbility(UUID playerId) {
         TransporterAbility ability = transporterAbilities.get(playerId);
-        plugin.getLogger().info("getTransporterActiveAbility called for player " + playerId + ". Returning: " + (ability != null ? "instance" : "null"));
         return ability;
     }
 
@@ -259,15 +257,18 @@ public class PlayerClassManager {
     // New methods for post-death portal cooldown
     public void addPlayerToPostDeathPortalCooldown(UUID playerUUID) {
         postDeathPortalCooldown.add(playerUUID);
-        plugin.getLogger().info("Player " + playerUUID + " added to post-death portal cooldown.");
     }
 
     public void removePlayerFromPostDeathPortalCooldown(UUID playerUUID) {
         postDeathPortalCooldown.remove(playerUUID);
-        plugin.getLogger().info("Player " + playerUUID + " removed from post-death portal cooldown.");
     }
 
     public boolean isPlayerInPostDeathPortalCooldown(UUID playerUUID) {
         return postDeathPortalCooldown.contains(playerUUID);
+    }
+
+    // New method for tab completion
+    public List<String> getAllClassNames() {
+        return Arrays.asList("dasher", "scout", "scorpio", "assassin", "spy", "transporter", "farmer");
     }
 }

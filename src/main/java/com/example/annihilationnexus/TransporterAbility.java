@@ -305,7 +305,7 @@ public class TransporterAbility {
         
                         private void setPortalMetadata(Block block, UUID ownerUUID, Location linkedLocation) {
         
-                            plugin.getLogger().info("Setting metadata for block: " + block.getLocation() + ", Original BlockData: " + block.getBlockData().getAsString());
+                    
         
                             block.setMetadata(PORTAL_METADATA_KEY, new FixedMetadataValue(plugin, true));
         
@@ -361,7 +361,7 @@ public class TransporterAbility {
         
                                 String locString = values.get(0).asString();
         
-                                // plugin.getLogger().info("Raw metadata value for PORTAL_LINK_METADATA_KEY: " + locString);
+                                // 
         
                                 return LocationUtil.stringToLocation(locString);
         
@@ -474,7 +474,7 @@ public class TransporterAbility {
                     
         
                     public void teleportPlayer(Player player, Block portalBlock) {
-                        plugin.getLogger().info("teleportPlayer called for player: " + player.getName() + " at portal: " + portalBlock.getLocation().toString());
+                
                 
                         Location linkedLocation = getLinkedPortalLocation(portalBlock);
                 
@@ -501,7 +501,7 @@ public class TransporterAbility {
                 
                             player.teleport(teleportLoc);
                             player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
-                            plugin.getLogger().info("Player " + player.getName() + " teleported to: " + teleportLoc.toString());
+                    
                 
                         } else {
                             player.sendMessage(ChatColor.RED + "Portal link not found!");
@@ -513,7 +513,7 @@ public class TransporterAbility {
         
                     public void destroyPortal(Block block) {
         
-                        plugin.getLogger().info("destroyPortal called for block: " + block.getLocation());
+                
         
                         if (!isPortalBlock(block)) {
         
@@ -553,7 +553,7 @@ public class TransporterAbility {
         
                             }
         
-                            plugin.getLogger().info("Removed portal entries from activePortals map for owner " + ownerUUID);
+                    
         
                         }
         
@@ -573,7 +573,7 @@ public class TransporterAbility {
         
                             if (isPortalBlock(linkedBlock)) { // Check if it's still a portal before destroying
         
-                                plugin.getLogger().info("Attempting to destroy linked portal block: " + linkedBlock.getLocation());
+                        
         
                                 forceDestroyPortal(plugin, linkedBlock);
         
@@ -587,7 +587,7 @@ public class TransporterAbility {
         
                     
         
-                        plugin.getLogger().info("Transporter portal pair fully destroyed for owner " + ownerUUID);
+                
         
                     }
         
@@ -709,13 +709,13 @@ public class TransporterAbility {
         
                     public void destroyAllPortalsForPlayer(UUID playerUUID) {
         
-                        plugin.getLogger().info("Attempting to destroy all portals for player: " + playerUUID);
+                
         
                         if (activePortals.containsKey(playerUUID)) {
         
                             Map<Location, Location> playerActivePortals = activePortals.get(playerUUID);
         
-                            plugin.getLogger().info("Player " + playerUUID + " has " + playerActivePortals.size() + " active portals.");
+                    
         
                             // Create a copy of keys to avoid ConcurrentModificationException
         
@@ -725,7 +725,7 @@ public class TransporterAbility {
         
                                 if (TransporterAbility.isPortalBlock(block)) {
         
-                                    plugin.getLogger().info("Destroying portal block at: " + loc.toString());
+                            
         
                                     destroyPortal(block);
         
@@ -735,11 +735,11 @@ public class TransporterAbility {
         
                             activePortals.remove(playerUUID); // Ensure the map entry for the player is cleared
         
-                            plugin.getLogger().info("All portals for player " + playerUUID + " destroyed and removed from activePortals map.");
+                    
         
                         } else {
         
-                            plugin.getLogger().info("Player " + playerUUID + " has no active portals in activePortals map.");
+                    
         
                         }
         
@@ -749,7 +749,7 @@ public class TransporterAbility {
         
                             playerPortalSelections.remove(playerUUID);
         
-                            plugin.getLogger().info("Cleared pending portal selection for player " + playerUUID);
+                    
         
                         }
         
@@ -757,7 +757,7 @@ public class TransporterAbility {
         
                         resetPortalMakerItemName(plugin.getServer().getPlayer(playerUUID));
         
-                        plugin.getLogger().info("Stopped continuous particle effects for player " + playerUUID);
+                
         
                     }
         
@@ -807,7 +807,7 @@ public class TransporterAbility {
 
     // Public static method to destroy a portal and revert its blocks, even if the owner's ability instance is not active
     public static void forceDestroyPortal(AnnihilationNexus plugin, Block block) {
-        plugin.getLogger().info("forceDestroyPortal called for block: " + block.getLocation().toString());
+        
 
         if (!block.hasMetadata(PORTAL_METADATA_KEY)) {
             plugin.getLogger().warning("forceDestroyPortal called on a non-portal block: " + block.getLocation());
@@ -825,7 +825,7 @@ public class TransporterAbility {
             String blockDataString = block.getMetadata(PORTAL_ORIGINAL_BLOCK_DATA_KEY).get(0).asString();
             try {
                 block.setBlockData(plugin.getServer().createBlockData(blockDataString));
-                plugin.getLogger().info("Reverted block " + block.getLocation() + " to " + blockDataString);
+                
             } catch (IllegalArgumentException e) {
                 plugin.getLogger().severe("Failed to create block data from string: " + blockDataString);
                 block.setType(Material.AIR); // Fallback
@@ -842,6 +842,6 @@ public class TransporterAbility {
         block.removeMetadata(PORTAL_ORIGINAL_BLOCK_DATA_KEY, plugin);
         block.removeMetadata(PORTAL_PARTICLE_TASK_ID_KEY, plugin);
 
-        plugin.getLogger().info("Transporter portal block at " + block.getLocation() + " destroyed and reverted.");
+        
     }
 }

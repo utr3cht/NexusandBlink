@@ -54,7 +54,6 @@ public class ProtectedCropManager {
                 }
             }
         }
-        plugin.getLogger().info("Loaded " + protectedCrops.size() + " protected crops and started growth tasks.");
     }
 
     public void saveCrops() {

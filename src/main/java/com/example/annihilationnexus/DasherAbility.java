@@ -32,7 +32,6 @@ public class DasherAbility {
     }
 
     public void startVisualizer() {
-        plugin.getLogger().info("startVisualizer called for " + player.getName()); // DEBUG
         if (visualizerTask != null) {
             visualizerTask.cancel();
             revertVisualizedBlock(); // Revert previous block if task is cancelled
@@ -43,7 +42,6 @@ public class DasherAbility {
             public void run() {
                 // Self-termination check
                 if (!player.isSneaking() || !plugin.isBlinkItem(player.getInventory().getItemInMainHand())) {
-                    plugin.getLogger().info("Visualizer task self-terminating for " + player.getName() + ". isSneaking: " + player.isSneaking() + ", isBlinkItem: " + plugin.isBlinkItem(player.getInventory().getItemInMainHand())); // DEBUG
                     stopVisualizer();
                     return;
                 }
@@ -78,7 +76,6 @@ public class DasherAbility {
     }
 
     public void stopVisualizer() {
-        plugin.getLogger().info("stopVisualizer called for " + player.getName()); // DEBUG
         if (visualizerTask != null) {
             visualizerTask.cancel();
             visualizerTask = null;

@@ -36,151 +36,163 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
     private PlayerClassManager playerClassManager;
         private ClassRegionManager classRegionManager;
         private ProtectedCropManager protectedCropManager;
-        private PlayerTeamManager playerTeamManager;
-        private NamespacedKey classKey;
-        private final Set<UUID> noFall = ConcurrentHashMap.newKeySet();
-        private final Map<UUID, BukkitTask> noFallTasks = new ConcurrentHashMap<>();
-        private final Set<UUID> achievedNetheriteHoeBreak = ConcurrentHashMap.newKeySet();
-        private boolean friendlyFireEnabled;
-    
-        @Override
-        public void onEnable() {
-            // Serialization
-            ConfigurationSerialization.registerClass(ProtectedCropInfo.class);
-    
-            // Register this class as a listener for EntityDamageEvent
-            getServer().getPluginManager().registerEvents(this, this);
-            getServer().getPluginManager().registerEvents(new NetheriteHoeAchievementListener(this), this); // Register new listener
-    
-            // Config handling
-            saveDefaultConfig(); // Ensure config.yml exists with defaults
-            reloadConfig(); // Load the config from disk
-            this.friendlyFireEnabled = getConfig().getBoolean("gameplay.friendly-fire", false);
-            loadAchievedNetheriteHoeBreak(); // Load achievement data
-    
-            this.classKey = new NamespacedKey(this, "class_name");
-            this.classRegionManager = new ClassRegionManager(this);
-            this.protectedCropManager = new ProtectedCropManager(this);
-    
-            // Plugin startup logic
-            this.nexusManager = new NexusManager(this);
-            this.scoreboardManager = new ScoreboardManager(this, nexusManager);
-            this.playerClassManager = new PlayerClassManager(this);
-            this.playerTeamManager = new PlayerTeamManager(this);
-    
-            // Load data
-            this.nexusManager.loadNexuses();
-            this.playerClassManager.loadClasses();
-            this.classRegionManager.loadRegions();
-            this.scoreboardManager.loadScoreboardVisibility();
-            this.playerTeamManager.loadTeams();
-    
-            // Delay crop loading by 20 ticks (1 second) to ensure worlds are loaded
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    protectedCropManager.loadCropsAndStartGrowth();
-                }
-            }.runTaskLater(this, 20L);
-    
-            // Registering events and commands
-            getServer().getPluginManager().registerEvents(new NexusListener(this, nexusManager), this);
-            getServer().getPluginManager().registerEvents(new PlayerLifecycleListener(this, scoreboardManager, playerClassManager, playerTeamManager), this);
-            getServer().getPluginManager().registerEvents(new BlinkListener(this), this);
-            getServer().getPluginManager().registerEvents(new PlayerToggleSneakListener(this), this);
-            getServer().getPluginManager().registerEvents(new PlayerQuitListener(this), this);
-            getServer().getPluginManager().registerEvents(new GrappleListener(this), this);
-            getServer().getPluginManager().registerEvents(new LauncherPadListener(this), this);
-            getServer().getPluginManager().registerEvents(new LauncherPadBreakListener(), this);
-            getServer().getPluginManager().registerEvents(new ScorpioListener(this, playerClassManager), this);
-            getServer().getPluginManager().registerEvents(new AssassinListener(this, playerClassManager), this);
-            getServer().getPluginManager().registerEvents(new SpyListener(this, playerClassManager), this);
-            getServer().getPluginManager().registerEvents(new TransporterListener(this), this);
-            getServer().getPluginManager().registerEvents(new ClassItemListener(this), this);
-            getServer().getPluginManager().registerEvents(new ClassSelectionListener(this, playerClassManager), this);
-            getServer().getPluginManager().registerEvents(new ClassItemRestrictionListener(this), this);
-            getServer().getPluginManager().registerEvents(new FarmerListener(this, playerClassManager, protectedCropManager), this);
-            getServer().getPluginManager().registerEvents(new DeathMessageListener(playerClassManager), this);
-        getServer().getPluginManager().registerEvents(new FriendlyFireDebugListener(this), this);
-            this.getCommand("class").setExecutor(new ClassCommand(this, playerClassManager));
-            this.getCommand("class").setTabCompleter(new ClassTabCompleter(playerClassManager));
-            this.getCommand("nexus").setExecutor(new NexusAdminCommand(this, nexusManager));
-            this.getCommand("nexus").setTabCompleter(new NexusAdminTabCompleter(nexusManager));
-            this.getCommand("anni").setExecutor(new AnniAdminCommand(this));
-        this.getCommand("anni").setTabCompleter(new AnniAdminTabCompleter());
-            this.getCommand("togglescoreboard").setExecutor(new ToggleScoreboardCommand(scoreboardManager));
-            this.getCommand("classregion").setExecutor(new ClassRegionCommand(this, classRegionManager));
-            this.getCommand("team").setExecutor(new TeamCommand(this, nexusManager, scoreboardManager, playerTeamManager));
-    
-            // Assassin cooldown display task
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
-                        String playerClass = playerClassManager.getPlayerClass(player.getUniqueId());
-                        if (playerClass != null && playerClass.equalsIgnoreCase("assassin")) {
-                            AssassinAbility ability = playerClassManager.getAssassinAbility(player.getUniqueId());
-                            if (ability != null) {
-                                ability.updateItemLore();
+            private PlayerTeamManager playerTeamManager;
+            private TeamColorManager teamColorManager; // Add field
+            private NamespacedKey classKey;
+            private final Set<UUID> noFall = ConcurrentHashMap.newKeySet();
+            private final Map<UUID, BukkitTask> noFallTasks = new ConcurrentHashMap<>();
+            private final Set<UUID> achievedNetheriteHoeBreak = ConcurrentHashMap.newKeySet();
+            private boolean friendlyFireEnabled;
+        
+            @Override
+            public void onEnable() {
+                // Serialization
+                ConfigurationSerialization.registerClass(ProtectedCropInfo.class);
+        
+                // Register this class as a listener for EntityDamageEvent
+                getServer().getPluginManager().registerEvents(this, this);
+                getServer().getPluginManager().registerEvents(new NetheriteHoeAchievementListener(this), this); // Register new listener
+        
+                // Config handling
+                saveDefaultConfig(); // Ensure config.yml exists with defaults
+                reloadConfig(); // Load the config from disk
+                this.friendlyFireEnabled = getConfig().getBoolean("gameplay.friendly-fire", false);
+                loadAchievedNetheriteHoeBreak(); // Load achievement data
+        
+                this.classKey = new NamespacedKey(this, "class_name");
+                this.classRegionManager = new ClassRegionManager(this);
+                this.protectedCropManager = new ProtectedCropManager(this);
+        
+                        // Plugin startup logic
+                        this.nexusManager = new NexusManager(this);
+                        this.playerClassManager = new PlayerClassManager(this);
+                        this.playerTeamManager = new PlayerTeamManager(this);
+                        this.teamColorManager = new TeamColorManager(this); // Instantiate
+                        this.scoreboardManager = new ScoreboardManager(this, nexusManager, teamColorManager, playerTeamManager);        
+                // Load data
+                this.nexusManager.loadNexuses();
+                this.teamColorManager.loadColors(); // Load colors
+                this.playerClassManager.loadClasses();
+                this.classRegionManager.loadRegions();
+                this.scoreboardManager.loadScoreboardVisibility();
+                this.playerTeamManager.loadTeams();
+        
+                // Delay crop loading by 20 ticks (1 second) to ensure worlds are loaded
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        protectedCropManager.loadCropsAndStartGrowth();
+                    }
+                }.runTaskLater(this, 20L);
+        
+                // Registering events and commands
+                getServer().getPluginManager().registerEvents(new NexusListener(this, nexusManager), this);
+                getServer().getPluginManager().registerEvents(new PlayerLifecycleListener(this, scoreboardManager, playerClassManager, playerTeamManager), this);
+                getServer().getPluginManager().registerEvents(new BlinkListener(this), this);
+                getServer().getPluginManager().registerEvents(new PlayerToggleSneakListener(this), this);
+                getServer().getPluginManager().registerEvents(new PlayerQuitListener(this), this);
+                getServer().getPluginManager().registerEvents(new GrappleListener(this), this);
+                getServer().getPluginManager().registerEvents(new LauncherPadListener(this), this);
+                getServer().getPluginManager().registerEvents(new LauncherPadBreakListener(), this);
+                getServer().getPluginManager().registerEvents(new ScorpioListener(this, playerClassManager), this);
+                getServer().getPluginManager().registerEvents(new AssassinListener(this, playerClassManager), this);
+                getServer().getPluginManager().registerEvents(new SpyListener(this, playerClassManager), this);
+                getServer().getPluginManager().registerEvents(new TransporterListener(this), this);
+                getServer().getPluginManager().registerEvents(new ClassItemListener(this), this);
+                getServer().getPluginManager().registerEvents(new ClassSelectionListener(this, playerClassManager), this);
+                getServer().getPluginManager().registerEvents(new ClassItemRestrictionListener(this), this);
+                getServer().getPluginManager().registerEvents(new FarmerListener(this, playerClassManager, protectedCropManager), this);
+                getServer().getPluginManager().registerEvents(new DeathMessageListener(playerClassManager, playerTeamManager, scoreboardManager), this);
+                getServer().getPluginManager().registerEvents(new PlayerChatListener(playerTeamManager, scoreboardManager), this);
+                this.getCommand("class").setExecutor(new ClassCommand(this, playerClassManager));
+                this.getCommand("class").setTabCompleter(new ClassTabCompleter(this));
+                this.getCommand("nexus").setExecutor(new NexusAdminCommand(this, nexusManager));
+                this.getCommand("nexus").setTabCompleter(new NexusAdminTabCompleter(nexusManager));
+                this.getCommand("anni").setExecutor(new AnniAdminCommand(this));
+                this.getCommand("anni").setTabCompleter(new AnniAdminTabCompleter());
+                this.getCommand("togglescoreboard").setExecutor(new ToggleScoreboardCommand(scoreboardManager));
+                        this.getCommand("classregion").setExecutor(new ClassRegionCommand(this, classRegionManager));
+                this.getCommand("classregion").setTabCompleter(new ClassRegionCommand(this, classRegionManager));
+                        TeamCommand teamCommand = new TeamCommand(this, nexusManager, scoreboardManager, playerTeamManager, teamColorManager);
+                        this.getCommand("team").setExecutor(teamCommand);
+                        this.getCommand("team").setTabCompleter(teamCommand);        
+                // Assassin cooldown display task
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
+                            String playerClass = playerClassManager.getPlayerClass(player.getUniqueId());
+                            if (playerClass != null && playerClass.equalsIgnoreCase("assassin")) {
+                                AssassinAbility ability = playerClassManager.getAssassinAbility(player.getUniqueId());
+                                if (ability != null) {
+                                    ability.updateItemLore();
+                                }
                             }
                         }
                     }
-                }
-            }.runTaskTimer(this, 0L, 20L);
-    
-            // Spy cooldown display task
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
-                        String playerClass = playerClassManager.getPlayerClass(player.getUniqueId());
-                        if (playerClass != null && playerClass.equalsIgnoreCase("spy")) {
-                            SpyAbility ability = playerClassManager.getSpyAbility(player.getUniqueId());
-                            if (ability != null) {
-                                ability.updateItemLore();
+                }.runTaskTimer(this, 0L, 20L);
+        
+                // Spy cooldown display task
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
+                            String playerClass = playerClassManager.getPlayerClass(player.getUniqueId());
+                            if (playerClass != null && playerClass.equalsIgnoreCase("spy")) {
+                                SpyAbility ability = playerClassManager.getSpyAbility(player.getUniqueId());
+                                if (ability != null) {
+                                    ability.updateItemLore();
+                                }
                             }
                         }
                     }
-                }
-            }.runTaskTimer(this, 0L, 20L);
-    
-            // Farmer Feast cooldown display task
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
-                        String playerClass = playerClassManager.getPlayerClass(player.getUniqueId());
-                        if (playerClass != null && playerClass.equalsIgnoreCase("farmer")) {
-                            FarmerAbility ability = playerClassManager.getFarmerAbility(player.getUniqueId());
-                            if (ability != null) {
-                                ability.updateItemLore(player);
+                }.runTaskTimer(this, 0L, 20L);
+        
+                // Farmer Feast cooldown display task
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
+                            String playerClass = playerClassManager.getPlayerClass(player.getUniqueId());
+                            if (playerClass != null && playerClass.equalsIgnoreCase("farmer")) {
+                                FarmerAbility ability = playerClassManager.getFarmerAbility(player.getUniqueId());
+                                if (ability != null) {
+                                    ability.updateItemLore(player);
+                                }
                             }
                         }
                     }
-                }
-            }.runTaskTimer(this, 0L, 20L);
+                }.runTaskTimer(this, 0L, 20L);
+        
+            }
+        
+            @Override
+            public void onDisable() {
+                // Plugin shutdown logic
+                this.nexusManager.saveNexuses();
+                this.playerClassManager.saveClasses();
+                this.classRegionManager.saveRegions();
+                this.scoreboardManager.saveScoreboardVisibility();
+                this.protectedCropManager.saveCrops();
+                this.playerTeamManager.saveTeams();
+                this.teamColorManager.saveColors(); // Save colors
+                saveAchievedNetheriteHoeBreak(); // Save achievement data
+            }
     
-            getLogger().info("AnnihilationNexus plugin has been enabled!");
-        }
-    
-        @Override
-        public void onDisable() {
-            // Plugin shutdown logic
-            this.nexusManager.saveNexuses();
-            this.playerClassManager.saveClasses();
-            this.classRegionManager.saveRegions();
-            this.scoreboardManager.saveScoreboardVisibility();
-            this.protectedCropManager.saveCrops();
-            this.playerTeamManager.saveTeams();
-            saveAchievedNetheriteHoeBreak(); // Save achievement data
-            getLogger().info("AnnihilationNexus plugin has been disabled!");
-        }
-    
+        
+    public boolean isRemoveTransporterPortalOnLogout() {
+        return getConfig().getBoolean("transporter.remove-on-logout", true);
+    }
+        
         @Override
         public void saveDefaultConfig() {
             super.saveDefaultConfig();
             // Add custom defaults for configurable crop drops if they don't exist
             FileConfiguration config = getConfig();
+            if (!config.contains("transporter.remove-on-logout")) {
+                config.set("transporter.remove-on-logout", true);
+                saveConfig();
+            }
             if (!config.contains("farmer.extra-drops.crops.custom-drops")) {
                 List<Map<String, Object>> defaultDrops = new ArrayList<>();
                 Map<String, Object> appleDrop = new java.util.HashMap<>();
@@ -319,10 +331,13 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
             return protectedCropManager;
         }
     
-        public PlayerTeamManager getPlayerTeamManager() {
-            return playerTeamManager;
-        }
-    
+            public PlayerTeamManager getPlayerTeamManager() {
+                return playerTeamManager;
+            }
+        
+            public TeamColorManager getTeamColorManager() {
+                return teamColorManager;
+            }    
         public void reload() {
             reloadConfig(); // Reload the config from disk
             // Ensure any new defaults are copied to the in-memory config
@@ -371,7 +386,6 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
                     public void run() {
                         noFall.remove(playerId);
                         noFallTasks.remove(playerId);
-                        AnnihilationNexus.this.getLogger().info("Removed noFall for " + player.getName() + " after landing.");
                     }
                 }.runTaskLater(this, 20L); // 1 second (20 ticks)
     
@@ -698,11 +712,9 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
                 this.friendlyFireEnabled = enabled;
                 getConfig().set("gameplay.friendly-fire", enabled);
                 saveConfig();
-                getLogger().info("[DEBUG] setFriendlyFire called. Setting friendly fire to: " + enabled);
         
                 // Apply to all existing teams on the main scoreboard
                 for (org.bukkit.scoreboard.Team team : Bukkit.getScoreboardManager().getMainScoreboard().getTeams()) {
-                    getLogger().info("[DEBUG] Applying to main scoreboard team: " + team.getName());
                     team.setAllowFriendlyFire(enabled);
                 }
         

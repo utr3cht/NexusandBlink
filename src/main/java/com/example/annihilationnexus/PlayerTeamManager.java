@@ -39,7 +39,6 @@ public class PlayerTeamManager {
                 }
             }
         }
-        plugin.getLogger().info("Loaded " + playerTeams.size() + " player team entries.");
     }
 
     public void saveTeams() {

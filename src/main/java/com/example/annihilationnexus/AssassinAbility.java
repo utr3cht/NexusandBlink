@@ -63,7 +63,34 @@ public class AssassinAbility {
                     player.setNoDamageTicks(0); // Remove invulnerability
                     // Restore armor
                     if (armor.containsKey(player.getUniqueId())) {
-                        player.getInventory().setArmorContents(armor.get(player.getUniqueId()));
+                        ItemStack[] originalArmor = armor.get(player.getUniqueId());
+                        ItemStack[] currentArmor = player.getInventory().getArmorContents();
+
+                        for (int i = 0; i < 4; i++) {
+                            ItemStack originalPiece = (originalArmor != null && i < originalArmor.length) ? originalArmor[i] : null;
+                            if (originalPiece == null || originalPiece.getType().isAir()) {
+                                continue; // No original armor for this slot.
+                            }
+
+                            ItemStack currentPiece = (currentArmor != null && i < currentArmor.length) ? currentArmor[i] : null;
+
+                            if (currentPiece == null || currentPiece.getType().isAir()) {
+                                // The slot is free, so we can re-equip the original piece.
+                                if (currentArmor != null) currentArmor[i] = originalPiece;
+                            } else {
+                                // The slot is occupied. Return the original piece to the inventory.
+                                HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(originalPiece);
+                                if (!leftover.isEmpty()) {
+                                    // Drop the item if inventory is full
+                                    for (ItemStack drop : leftover.values()) {
+                                        player.getWorld().dropItemNaturally(player.getLocation(), drop);
+                                    }
+                                }
+                            }
+                        }
+                        // Set the final calculated armor
+                        player.getInventory().setArmorContents(currentArmor);
+
                         armor.remove(player.getUniqueId());
                     }
                     this.cancel();

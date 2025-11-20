@@ -92,7 +92,6 @@ public class ClassRegionManager {
                 }
             }
         }
-        plugin.getLogger().info("Loaded " + regions.size() + " class regions.");
     }
 
     public void saveRegions() {

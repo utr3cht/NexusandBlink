@@ -40,7 +40,6 @@ public class NetheriteHoeAchievementListener implements Listener {
                 }
 
                 org.bukkit.Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', player.getName() + " " + message));
-                plugin.getLogger().info(player.getName() + " has achieved: " + ChatColor.stripColor(message));
             }
         }
     }

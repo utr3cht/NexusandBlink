@@ -5,14 +5,20 @@ import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.util.StringUtil;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-public class ClassRegionCommand implements CommandExecutor {
+public class ClassRegionCommand implements CommandExecutor, TabCompleter {
 
     private final AnnihilationNexus plugin;
     private final ClassRegionManager classRegionManager;
@@ -125,5 +131,25 @@ public class ClassRegionCommand implements CommandExecutor {
 
     private String formatLocation(Location loc) {
         return String.format("%.0f,%.0f,%.0f", loc.getX(), loc.getY(), loc.getZ());
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        List<String> completions = new ArrayList<>();
+        List<String> candidates = new ArrayList<>();
+
+        if (args.length == 1) {
+            candidates.addAll(Arrays.asList("pos1", "pos2", "create", "delete", "list"));
+            StringUtil.copyPartialMatches(args[0], candidates, completions);
+        } else if (args.length == 2) {
+            if (args[0].equalsIgnoreCase("delete")) {
+                candidates.addAll(classRegionManager.getAllRegions().stream()
+                        .map(ClassRegion::getName)
+                        .collect(Collectors.toList()));
+                StringUtil.copyPartialMatches(args[1], candidates, completions);
+            }
+        }
+        Collections.sort(completions);
+        return completions;
     }
 }
