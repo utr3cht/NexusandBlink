@@ -60,9 +60,9 @@ public class NexusAdminCommand implements CommandExecutor {
                 sender.sendMessage(ChatColor.GREEN + "Nexus for team " + teamToDelete + " deleted.");
                 plugin.getScoreboardManager().updateForAllPlayers(); // Refresh scoreboards
                 break;
-            case "setnexushp":
+            case "sethp":
                 if (args.length != 3) {
-                    sender.sendMessage(ChatColor.RED + "Usage: /nexus setnexushp <team> <hp>");
+                    sender.sendMessage(ChatColor.RED + "Usage: /nexus sethp <team> <hp>");
                     return false;
                 }
                 String teamName = args[1].toUpperCase(Locale.ROOT);

@@ -29,7 +29,8 @@ public class ScoreboardManager {
     private final PlayerTeamManager playerTeamManager;
     private final Map<UUID, Boolean> scoreboardVisibility = new HashMap<>(); // Player UUID -> is visible?
 
-    public ScoreboardManager(AnnihilationNexus plugin, NexusManager nexusManager, TeamColorManager teamColorManager, PlayerTeamManager playerTeamManager) {
+    public ScoreboardManager(AnnihilationNexus plugin, NexusManager nexusManager, TeamColorManager teamColorManager,
+            PlayerTeamManager playerTeamManager) {
         this.plugin = plugin;
         this.nexusManager = nexusManager;
         this.teamColorManager = teamColorManager;
@@ -64,7 +65,8 @@ public class ScoreboardManager {
         }
 
         Objective objective = scoreboard.getObjective("annihilation");
-        String title = ChatColor.translateAlternateColorCodes('&', scoreboardConfig.getString("title", "&e&lAnnihilation"));
+        String title = ChatColor.translateAlternateColorCodes('&',
+                scoreboardConfig.getString("title", "&e&lAnnihilation"));
         if (objective == null) {
             objective = scoreboard.registerNewObjective("annihilation", "dummy", title);
             objective.setDisplaySlot(DisplaySlot.SIDEBAR);
@@ -84,7 +86,7 @@ public class ScoreboardManager {
                 }
             }
         }
-        
+
         // Clear old scores to prevent duplicates
         for (String entry : scoreboard.getEntries()) {
             scoreboard.resetScores(entry);
@@ -97,11 +99,23 @@ public class ScoreboardManager {
             line = line.replace("%online_players%", String.valueOf(Bukkit.getOnlinePlayers().size()));
 
             if (line.equals("NEXUS_STATUS")) {
-                for (Map.Entry<String, Nexus> entry : nexusManager.getAllNexuses().entrySet()) {
+                List<Map.Entry<String, Nexus>> sortedNexuses = new java.util.ArrayList<>(
+                        nexusManager.getAllNexuses().entrySet());
+                sortedNexuses.sort((e1, e2) -> {
+                    int healthCompare = Integer.compare(e2.getValue().getHealth(), e1.getValue().getHealth()); // Descending
+                                                                                                               // health
+                    if (healthCompare != 0) {
+                        return healthCompare;
+                    }
+                    return e1.getKey().compareTo(e2.getKey()); // Alphabetical team name as tie-breaker
+                });
+
+                for (Map.Entry<String, Nexus> entry : sortedNexuses) {
                     String teamName = entry.getKey();
                     Nexus nexus = entry.getValue();
                     ChatColor teamColor = getTeamColor(teamName);
-                    String status = nexus.isDestroyed() ? ChatColor.RED + "DESTROYED" : ChatColor.GREEN + "" + nexus.getHealth();
+                    String status = nexus.isDestroyed() ? ChatColor.RED + "DESTROYED"
+                            : ChatColor.GREEN + "" + nexus.getHealth();
                     objective.getScore(teamColor + teamName + ": " + status).setScore(score--);
                 }
             } else {
@@ -127,7 +141,8 @@ public class ScoreboardManager {
         scoreboardVisibility.put(playerUUID, !currentVisibility);
         saveScoreboardVisibility();
         updateScoreboard(player); // Update immediately after toggle
-        player.sendMessage(ChatColor.GREEN + "Scoreboard visibility toggled " + (!currentVisibility ? "on" : "off") + ".");
+        player.sendMessage(
+                ChatColor.GREEN + "Scoreboard visibility toggled " + (!currentVisibility ? "on" : "off") + ".");
     }
 
     public ChatColor getTeamColor(String teamName) {
@@ -138,11 +153,16 @@ public class ScoreboardManager {
         }
         // Fallback to default colors
         switch (teamName.toLowerCase()) {
-            case "red": return ChatColor.RED;
-            case "blue": return ChatColor.BLUE;
-            case "green": return ChatColor.GREEN;
-            case "yellow": return ChatColor.YELLOW;
-            default: return ChatColor.WHITE;
+            case "red":
+                return ChatColor.RED;
+            case "blue":
+                return ChatColor.BLUE;
+            case "green":
+                return ChatColor.GREEN;
+            case "yellow":
+                return ChatColor.YELLOW;
+            default:
+                return ChatColor.WHITE;
         }
     }
 
@@ -186,7 +206,8 @@ public class ScoreboardManager {
     }
 
     private void addPlayerToTeamOnScoreboard(Scoreboard scoreboard, Player player, String teamName) {
-        if (scoreboard == null) return;
+        if (scoreboard == null)
+            return;
         String playerName = player.getName();
 
         Team newTeam = scoreboard.getTeam(teamName);
@@ -195,32 +216,73 @@ public class ScoreboardManager {
             configureTeam(newTeam, teamName);
         }
 
-        // Remove player from their old team on this specific scoreboard
-        Team currentTeam = scoreboard.getEntryTeam(playerName);
-        if (currentTeam != null && !currentTeam.equals(newTeam)) {
-            currentTeam.removeEntry(playerName);
+        // Check if player is already on this team
+        if (newTeam.hasEntry(playerName)) {
+            return; // Already on this team, no need to do anything
         }
 
-        // Add player to the new team if they aren't already on it
-        if (!newTeam.hasEntry(playerName)) {
-            newTeam.addEntry(playerName);
+        // Remove player from their old team on this specific scoreboard
+        Team currentTeam = scoreboard.getEntryTeam(playerName);
+        if (currentTeam != null && currentTeam.hasEntry(playerName)) {
+            try {
+                currentTeam.removeEntry(playerName);
+            } catch (IllegalStateException e) {
+                // Player might not be on the team due to desync - log and continue
+                plugin.getLogger().warning("Failed to remove " + playerName + " from team " + currentTeam.getName()
+                        + ": " + e.getMessage());
+            }
         }
+
+        // Add player to the new team
+        try {
+            newTeam.addEntry(playerName);
+        } catch (IllegalStateException e) {
+            plugin.getLogger().warning("Failed to add " + playerName + " to team " + teamName + ": " + e.getMessage());
+        }
+    }
+
+    public void removePlayerFromTeam(Player player) {
+        String playerName = player.getName();
+
+        // Remove from all online players' scoreboards
+        for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+            Scoreboard sb = onlinePlayer.getScoreboard();
+            if (sb != null) {
+                Team team = sb.getEntryTeam(playerName);
+                if (team != null) {
+                    team.removeEntry(playerName);
+                }
+            }
+        }
+
+        // Remove from main scoreboard
+        Scoreboard mainSb = Bukkit.getScoreboardManager().getMainScoreboard();
+        Team mainTeam = mainSb.getEntryTeam(playerName);
+        if (mainTeam != null) {
+            mainTeam.removeEntry(playerName);
+        }
+
+        // Reset display name
+        player.setDisplayName(player.getName());
     }
 
     public void setPlayerTeam(Player player, String teamName) {
         // Update the team for the player on every online player's scoreboard
         for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
             Scoreboard playerScoreboard = onlinePlayer.getScoreboard();
-            // Ensure we are not modifying the main scoreboard if the player has a custom one
+            // Ensure we are not modifying the main scoreboard if the player has a custom
+            // one
             if (playerScoreboard != null && playerScoreboard != Bukkit.getScoreboardManager().getMainScoreboard()) {
                 addPlayerToTeamOnScoreboard(playerScoreboard, player, teamName);
             }
         }
 
-        // Also, always update the main scoreboard for server-wide compatibility and for new players.
+        // Also, always update the main scoreboard for server-wide compatibility and for
+        // new players.
         addPlayerToTeamOnScoreboard(Bukkit.getScoreboardManager().getMainScoreboard(), player, teamName);
 
-        // Finally, set the display name for the player who changed teams. This affects chat.
+        // Finally, set the display name for the player who changed teams. This affects
+        // chat.
         player.setDisplayName(getTeamColor(teamName) + player.getName() + ChatColor.RESET);
     }
 

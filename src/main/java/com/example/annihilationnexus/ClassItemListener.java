@@ -24,14 +24,15 @@ public class ClassItemListener implements Listener {
         ItemStack clickedItem = event.getCurrentItem();
         if (clickedItem != null && plugin.isClassItem(clickedItem)) {
             // Prevent placing class items in crafting grids, furnaces, etc.
-            if (event.getClickedInventory() != null && event.getClickedInventory().getType().name().contains("CRAFTING") ||
-                event.getClickedInventory().getType().name().contains("FURNACE") ||
-                event.getClickedInventory().getType().name().contains("CHEST") ||
-                event.getClickedInventory().getType().name().contains("SHULKER_BOX") ||
-                event.getClickedInventory().getType().name().contains("BARREL") ||
-                event.getClickedInventory().getType().name().contains("HOPPER") ||
-                event.getClickedInventory().getType().name().contains("DROPPER") ||
-                event.getClickedInventory().getType().name().contains("DISPENSER")) {
+            if (event.getClickedInventory() != null
+                    && (event.getClickedInventory().getType().name().contains("CRAFTING") ||
+                            event.getClickedInventory().getType().name().contains("FURNACE") ||
+                            event.getClickedInventory().getType().name().contains("CHEST") ||
+                            event.getClickedInventory().getType().name().contains("SHULKER_BOX") ||
+                            event.getClickedInventory().getType().name().contains("BARREL") ||
+                            event.getClickedInventory().getType().name().contains("HOPPER") ||
+                            event.getClickedInventory().getType().name().contains("DROPPER") ||
+                            event.getClickedInventory().getType().name().contains("DISPENSER"))) {
                 event.setCancelled(true);
                 event.getWhoClicked().sendMessage(ChatColor.RED + "You cannot place class items here!");
             }
@@ -44,14 +45,15 @@ public class ClassItemListener implements Listener {
         if (draggedItem != null && plugin.isClassItem(draggedItem)) {
             // Prevent dragging class items into crafting grids, furnaces, etc.
             for (Integer slot : event.getRawSlots()) {
-                if (event.getView().getInventory(slot) != null && event.getView().getInventory(slot).getType().name().contains("CRAFTING") ||
-                    event.getView().getInventory(slot).getType().name().contains("FURNACE") ||
-                    event.getView().getInventory(slot).getType().name().contains("CHEST") ||
-                    event.getView().getInventory(slot).getType().name().contains("SHULKER_BOX") ||
-                    event.getView().getInventory(slot).getType().name().contains("BARREL") ||
-                    event.getView().getInventory(slot).getType().name().contains("HOPPER") ||
-                    event.getView().getInventory(slot).getType().name().contains("DROPPER") ||
-                    event.getView().getInventory(slot).getType().name().contains("DISPENSER")) {
+                if (event.getView().getInventory(slot) != null
+                        && (event.getView().getInventory(slot).getType().name().contains("CRAFTING") ||
+                                event.getView().getInventory(slot).getType().name().contains("FURNACE") ||
+                                event.getView().getInventory(slot).getType().name().contains("CHEST") ||
+                                event.getView().getInventory(slot).getType().name().contains("SHULKER_BOX") ||
+                                event.getView().getInventory(slot).getType().name().contains("BARREL") ||
+                                event.getView().getInventory(slot).getType().name().contains("HOPPER") ||
+                                event.getView().getInventory(slot).getType().name().contains("DROPPER") ||
+                                event.getView().getInventory(slot).getType().name().contains("DISPENSER"))) {
                     event.setCancelled(true);
                     event.getWhoClicked().sendMessage(ChatColor.RED + "You cannot place class items here!");
                     break;
@@ -60,7 +62,7 @@ public class ClassItemListener implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = org.bukkit.event.EventPriority.LOWEST)
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
         event.getDrops().removeIf(plugin::isClassItem); // Remove class items from drops
@@ -73,6 +75,17 @@ public class ClassItemListener implements Listener {
         if (plugin.isClassItem(droppedItem)) {
             event.setCancelled(true); // Prevent dropping class items
             event.getPlayer().sendMessage(ChatColor.RED + "You cannot drop class items!");
+        }
+    }
+
+    @EventHandler
+    public void onPlayerInteractEntity(org.bukkit.event.player.PlayerInteractEntityEvent event) {
+        ItemStack item = event.getPlayer().getInventory().getItemInMainHand();
+        if (plugin.isClassItem(item)) {
+            // Prevent interaction with any entity using a class item if it's a dye
+            if (item.getType().name().endsWith("_DYE")) {
+                event.setCancelled(true);
+            }
         }
     }
 }

@@ -31,10 +31,12 @@ public class SpyListener implements Listener {
     @EventHandler
     public void onPlayerToggleSneak(PlayerToggleSneakEvent event) {
         Player player = event.getPlayer();
-        if (!isSpy(player)) return;
+        if (!isSpy(player))
+            return;
 
         SpyAbility spyAbility = playerClassManager.getSpyAbility(player.getUniqueId());
-        if (spyAbility == null) return;
+        if (spyAbility == null)
+            return;
 
         if (event.isSneaking()) {
             spyAbility.startVanishTimer();
@@ -47,17 +49,19 @@ public class SpyListener implements Listener {
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
-        if (!isSpy(player)) return;
+        if (!isSpy(player))
+            return;
 
         SpyAbility spyAbility = playerClassManager.getSpyAbility(player.getUniqueId());
-        if (spyAbility == null || !spyAbility.isVanished()) return;
+        if (spyAbility == null || !spyAbility.isVanished())
+            return;
 
         Location vanishLocation = spyAbility.getVanishLocation();
 
         if (vanishLocation != null) {
-            if (vanishLocation.getBlockX() != event.getTo().getBlockX() || 
-                vanishLocation.getBlockY() != event.getTo().getBlockY() || 
-                vanishLocation.getBlockZ() != event.getTo().getBlockZ()) {
+            if (vanishLocation.getBlockX() != event.getTo().getBlockX() ||
+                    vanishLocation.getBlockY() != event.getTo().getBlockY() ||
+                    vanishLocation.getBlockZ() != event.getTo().getBlockZ()) {
                 spyAbility.unVanish();
                 if (player.isSneaking()) {
                     spyAbility.startVanishTimer();
@@ -69,12 +73,15 @@ public class SpyListener implements Listener {
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        if (!isSpy(player)) return;
+        if (!isSpy(player))
+            return;
 
         SpyAbility spyAbility = playerClassManager.getSpyAbility(player.getUniqueId());
-        if (spyAbility == null) return;
+        if (spyAbility == null)
+            return;
 
-        if (plugin.isSpyItem(event.getItem()) && (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
+        if (plugin.isSpyItem(event.getItem())
+                && (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
             spyAbility.flee();
             event.setCancelled(true);
             return;
@@ -90,7 +97,8 @@ public class SpyListener implements Listener {
 
     @EventHandler(priority = EventPriority.NORMAL)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        if (!(event.getDamager() instanceof Player)) return;
+        if (!(event.getDamager() instanceof Player))
+            return;
 
         Player attacker = (Player) event.getDamager();
         Entity victim = event.getEntity();
@@ -102,6 +110,8 @@ public class SpyListener implements Listener {
                 if (attacker.isSneaking()) {
                     spyAbility.startVanishTimer();
                 }
+                // Refresh scoreboard to fix nametag
+                plugin.getScoreboardManager().updateScoreboard(attacker);
             }
 
             Vector attackerDirection = attacker.getLocation().getDirection().normalize();
@@ -119,6 +129,8 @@ public class SpyListener implements Listener {
                 if (((Player) victim).isSneaking()) {
                     victimAbility.startVanishTimer();
                 }
+                // Refresh scoreboard to fix nametag
+                plugin.getScoreboardManager().updateScoreboard((Player) victim);
             }
         }
     }
@@ -164,7 +176,7 @@ public class SpyListener implements Listener {
             player.playSound(player.getLocation(), Sound.ENTITY_ZOMBIE_VILLAGER_CURE, 1.0f, 1.0f); // Play sound
         }
     }
-    
+
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player joinedPlayer = event.getPlayer();

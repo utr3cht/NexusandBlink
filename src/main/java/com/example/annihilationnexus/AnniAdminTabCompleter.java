@@ -12,7 +12,7 @@ import java.util.List;
 
 public class AnniAdminTabCompleter implements TabCompleter {
 
-    private static final List<String> SUBCOMMANDS = Arrays.asList("start", "stop", "reload", "friendlyfire");
+    private static final List<String> SUBCOMMANDS = Arrays.asList("reload", "friendlyfire");
     private static final List<String> FRIENDLYFIRE_ARGS = Arrays.asList("on", "off", "true", "false");
 
     @Override
@@ -24,7 +24,7 @@ public class AnniAdminTabCompleter implements TabCompleter {
         } else if (args.length == 2 && args[0].equalsIgnoreCase("friendlyfire")) {
             StringUtil.copyPartialMatches(args[1], FRIENDLYFIRE_ARGS, completions);
         }
-        
+
         Collections.sort(completions);
         return completions;
     }

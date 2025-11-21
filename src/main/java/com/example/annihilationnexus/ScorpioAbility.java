@@ -90,7 +90,8 @@ public class ScorpioAbility {
                     // Schedule the stuck task
                     stuckTask = new BukkitRunnable() {
                         private int ticks = 0;
-                        private final int maxTicks = (int) (plugin.getScorpioStuckDuration() * 20); // Convert seconds to ticks
+                        private final int maxTicks = (int) (plugin.getScorpioStuckDuration() * 20); // Convert seconds
+                                                                                                    // to ticks
 
                         @Override
                         public void run() {
@@ -103,7 +104,8 @@ public class ScorpioAbility {
                             }
 
                             // Continuous pulling logic
-                            for (Entity entity : hook.getNearbyEntities(1.5, 1.5, 1.5)) { // Check a slightly larger radius
+                            for (Entity entity : hook.getNearbyEntities(1.5, 1.5, 1.5)) { // Check a slightly larger
+                                                                                          // radius
                                 if (entity instanceof Player && !entity.equals(player)) {
                                     Player affectedPlayer = (Player) entity;
                                     if (isRightClick) { // Right-click pulls enemy to hook
@@ -155,10 +157,16 @@ public class ScorpioAbility {
 
         double distance = player.getLocation().distance(target.getLocation());
         double distanceMultiplier = plugin.getScorpioDistancePullMultiplier();
-        double pullStrength = Math.min(1.0 + (distance * distanceMultiplier), 3.0); // Base strength 1.0, max 3.0
+        double pullStrength = Math.min(1.0 + (distance * distanceMultiplier), 2.5); // Reduced max strength from 3.0 to
+                                                                                    // 2.5
 
         Vector vector = target.getLocation().toVector().subtract(player.getLocation().toVector());
-        player.setVelocity(vector.normalize().multiply(pullStrength));
+        vector.normalize().multiply(pullStrength);
+
+        // Rubber band fix: Add a small vertical boost
+        vector.setY(vector.getY() + 0.4);
+
+        player.setVelocity(vector);
         player.setFallDistance(-10f);
 
         new BukkitRunnable() {
@@ -171,8 +179,8 @@ public class ScorpioAbility {
 
     private boolean isSafeLocation(Location location) {
         return location.clone().add(0, 1, 0).getBlock().isPassable() &&
-               location.clone().add(0, 2, 0).getBlock().isPassable() &&
-               location.clone().add(0, 3, 0).getBlock().isPassable();
+                location.clone().add(0, 2, 0).getBlock().isPassable() &&
+                location.clone().add(0, 3, 0).getBlock().isPassable();
     }
 
     private boolean isHalfBlockInFront() {

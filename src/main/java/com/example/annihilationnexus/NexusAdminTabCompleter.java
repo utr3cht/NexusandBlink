@@ -24,10 +24,10 @@ public class NexusAdminTabCompleter implements TabCompleter {
         List<String> candidates = new ArrayList<>();
 
         if (args.length == 1) {
-            candidates.addAll(Arrays.asList("create", "destroy", "sethealth"));
+            candidates.addAll(Arrays.asList("create", "delete", "sethp"));
             StringUtil.copyPartialMatches(args[0], candidates, completions);
         } else if (args.length == 2) {
-            if (args[0].equalsIgnoreCase("destroy") || args[0].equalsIgnoreCase("sethealth")) {
+            if (args[0].equalsIgnoreCase("delete") || args[0].equalsIgnoreCase("sethp")) {
                 candidates.addAll(nexusManager.getAllNexuses().keySet());
                 StringUtil.copyPartialMatches(args[1], candidates, completions);
             }

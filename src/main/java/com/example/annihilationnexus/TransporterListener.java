@@ -25,10 +25,12 @@ public class TransporterListener implements Listener {
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         String clazz = plugin.getPlayerClassManager().getPlayerClass(player.getUniqueId());
-        if (clazz == null || !clazz.equalsIgnoreCase("transporter")) return;
+        if (clazz == null || !clazz.equalsIgnoreCase("transporter"))
+            return;
 
         TransporterAbility ability = plugin.getPlayerClassManager().getTransporterAbility(player.getUniqueId());
-        if (ability == null) return;
+        if (ability == null)
+            return;
 
         if (plugin.isTransporterItem(player.getInventory().getItemInMainHand())) {
             if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
@@ -54,12 +56,12 @@ public class TransporterListener implements Listener {
         }
     }
 
-    
     @EventHandler
     public void onPlayerToggleSneak(PlayerToggleSneakEvent event) {
         Player player = event.getPlayer();
         Block below = player.getLocation().getBlock().getRelative(0, -1, 0);
-        if (!TransporterAbility.isPortalBlock(below)) return;
+        if (!TransporterAbility.isPortalBlock(below))
+            return;
 
         UUID ownerUUID = UUID.fromString(below.getMetadata("TransporterPortalOwner").get(0).asString());
         TransporterAbility ability = plugin.getPlayerClassManager().getTransporterAbility(ownerUUID);
@@ -84,7 +86,8 @@ public class TransporterListener implements Listener {
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
-        if (!TransporterAbility.isPortalBlock(block)) return;
+        if (!TransporterAbility.isPortalBlock(block))
+            return;
 
         UUID owner = UUID.fromString(block.getMetadata("TransporterPortalOwner").get(0).asString());
         TransporterAbility ability = plugin.getPlayerClassManager().getTransporterAbility(owner);
@@ -115,9 +118,41 @@ public class TransporterListener implements Listener {
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
         String clazz = plugin.getPlayerClassManager().getPlayerClass(player.getUniqueId());
-        if (clazz == null || !clazz.equalsIgnoreCase("transporter")) return;
+        if (clazz == null || !clazz.equalsIgnoreCase("transporter"))
+            return;
 
         // ★ 修正：死後にポータルを削除しない
         // plugin.getPlayerClassManager().addPlayerToPostDeathPortalCooldown(player.getUniqueId());
+    }
+
+    @EventHandler
+    public void onEntityExplode(org.bukkit.event.entity.EntityExplodeEvent event) {
+        handleExplosion(event.blockList());
+    }
+
+    @EventHandler
+    public void onBlockExplode(org.bukkit.event.block.BlockExplodeEvent event) {
+        handleExplosion(event.blockList());
+    }
+
+    private void handleExplosion(java.util.List<Block> blocks) {
+        for (Block block : blocks) {
+            if (TransporterAbility.isPortalBlock(block)) {
+                UUID owner = UUID.fromString(block.getMetadata("TransporterPortalOwner").get(0).asString());
+                TransporterAbility ability = plugin.getPlayerClassManager().getTransporterAbility(owner);
+                if (ability != null) {
+                    ability.destroyPortal(block);
+                    // Optionally notify the owner
+                    Player player = plugin.getServer().getPlayer(owner);
+                    if (player != null) {
+                        ability.resetPortalMakerItemName(player);
+                        player.sendMessage(ChatColor.RED + "Your Transporter portal was destroyed by an explosion.");
+                    }
+                } else {
+                    // Fallback if ability is null (e.g. player offline)
+                    TransporterAbility.forceDestroyPortal(plugin, block);
+                }
+            }
+        }
     }
 }

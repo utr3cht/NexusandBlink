@@ -51,15 +51,21 @@ public class NexusListener implements Listener {
 
             if (currentTime - lastHitTime < hitDelayMillis) {
                 event.setCancelled(true);
-                player.sendMessage(ChatColor.RED + "You can only hit the Nexus every " + (hitDelayMillis / 1000.0) + " seconds.");
+                player.sendMessage(
+                        ChatColor.RED + "You can only hit the Nexus every " + (hitDelayMillis / 1000.0) + " seconds.");
                 return;
             }
 
             // Update last hit time
             lastHitTimes.put(nexus.getTeamName(), currentTime);
-            
-            // Prevent players from damaging their own team's nexus (optional, for now we allow it)
-            // You would need a team manager to check this.
+
+            // Prevent players from damaging their own team's nexus
+            String playerTeam = plugin.getPlayerTeamManager().getPlayerTeam(player.getUniqueId());
+            if (playerTeam != null && playerTeam.equalsIgnoreCase(nexus.getTeamName())) {
+                player.sendMessage(ChatColor.RED + "You cannot damage your own Nexus!");
+                event.setCancelled(true);
+                return;
+            }
 
             event.setCancelled(true); // Prevent the nexus block from actually breaking
 
@@ -97,7 +103,8 @@ public class NexusListener implements Listener {
             // Play sound and particles on attack
             World world = blockLocation.getWorld();
             if (world != null) {
-                float pitch = (float) ThreadLocalRandom.current().nextDouble(0.5, 1.0); // Random pitch between 0.5 and 1.0
+                float pitch = (float) ThreadLocalRandom.current().nextDouble(0.5, 1.0); // Random pitch between 0.5 and
+                                                                                        // 1.0
                 world.playSound(blockLocation, Sound.BLOCK_ANVIL_LAND, 1.0f, pitch);
                 world.spawnParticle(Particle.LAVA, blockLocation.clone().add(0.5, 0.5, 0.5), 10, 0.2, 0.2, 0.2, 0.05);
             }
@@ -110,13 +117,15 @@ public class NexusListener implements Listener {
 
             if (nexus.isDestroyed()) {
                 player.getServer().broadcastMessage("The " + nexus.getTeamName() + " nexus has been destroyed!");
-                
+
                 // Schedule explosion effect and replace with bedrock with a 1-tick delay
                 if (world != null) {
                     plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
                         world.createExplosion(blockLocation, 0.0f, false); // Visual-only explosion
-                        world.spawnParticle(Particle.EXPLOSION_EMITTER, blockLocation.clone().add(0.5, 0.5, 0.5), 50, 0.5, 0.5, 0.5, 0.1);
-                        world.spawnParticle(Particle.LAVA, blockLocation.clone().add(0.5, 0.5, 0.5), 100, 0.5, 0.5, 0.5, 0.1);
+                        world.spawnParticle(Particle.EXPLOSION_EMITTER, blockLocation.clone().add(0.5, 0.5, 0.5), 50,
+                                0.5, 0.5, 0.5, 0.1);
+                        world.spawnParticle(Particle.LAVA, blockLocation.clone().add(0.5, 0.5, 0.5), 100, 0.5, 0.5, 0.5,
+                                0.1);
                         blockLocation.getBlock().setType(Material.BEDROCK);
                         // Update scoreboard one last time after destruction effects
                         plugin.getScoreboardManager().updateForAllPlayers();

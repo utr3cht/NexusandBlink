@@ -32,12 +32,14 @@ public class ClassTabCompleter implements TabCompleter {
             if (sender.hasPermission("annihilation.admin")) {
                 // Admins can set class for other players: /class <player> <class>
                 Bukkit.getOnlinePlayers().stream()
-                      .map(Player::getName)
-                      .forEach(candidates::add);
+                        .map(Player::getName)
+                        .forEach(candidates::add);
             }
-            // Add class names for non-admin context if it was designed to allow /class <class>
+            // Add class names for non-admin context if it was designed to allow /class
+            // <class>
             // Based on ClassCommand, non-admins only get GUI or 'item'
-            // So we only add class names as a second argument for admin player class setting
+            // So we only add class names as a second argument for admin player class
+            // setting
             StringUtil.copyPartialMatches(args[0], candidates, completions);
         } else if (args.length == 2) {
             if (sender.hasPermission("annihilation.admin")) {

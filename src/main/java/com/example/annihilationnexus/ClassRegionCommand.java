@@ -67,7 +67,8 @@ public class ClassRegionCommand implements CommandExecutor, TabCompleter {
                     Location loc2 = pos2Selections.get(player.getUniqueId());
 
                     if (loc1 == null || loc2 == null) {
-                        player.sendMessage(ChatColor.RED + "You must select two positions first using /classregion pos1 and /classregion pos2.");
+                        player.sendMessage(ChatColor.RED
+                                + "You must select two positions first using /classregion pos1 and /classregion pos2.");
                         return true;
                     }
 
@@ -77,8 +78,10 @@ public class ClassRegionCommand implements CommandExecutor, TabCompleter {
                     }
 
                     // Ensure min and max locations are correct
-                    Location min = new Location(loc1.getWorld(), Math.min(loc1.getX(), loc2.getX()), Math.min(loc1.getY(), loc2.getY()), Math.min(loc1.getZ(), loc2.getZ()));
-                    Location max = new Location(loc1.getWorld(), Math.max(loc1.getX(), loc2.getX()), Math.max(loc1.getY(), loc2.getY()), Math.max(loc1.getZ(), loc2.getZ()));
+                    Location min = new Location(loc1.getWorld(), Math.min(loc1.getX(), loc2.getX()),
+                            Math.min(loc1.getY(), loc2.getY()), Math.min(loc1.getZ(), loc2.getZ()));
+                    Location max = new Location(loc1.getWorld(), Math.max(loc1.getX(), loc2.getX()),
+                            Math.max(loc1.getY(), loc2.getY()), Math.max(loc1.getZ(), loc2.getZ()));
 
                     ClassRegion region = new ClassRegion(regionName, min, max);
                     classRegionManager.addRegion(region);
@@ -122,10 +125,14 @@ public class ClassRegionCommand implements CommandExecutor, TabCompleter {
 
     private void sendUsage(Player player) {
         player.sendMessage(ChatColor.YELLOW + "--- Class Region Commands ---");
-        player.sendMessage(ChatColor.AQUA + "/classregion pos1" + ChatColor.GRAY + " - Set position 1 to your location.");
-        player.sendMessage(ChatColor.AQUA + "/classregion pos2" + ChatColor.GRAY + " - Set position 2 to your location.");
-        player.sendMessage(ChatColor.AQUA + "/classregion create <name>" + ChatColor.GRAY + " - Create a region with pos1 and pos2.");
-        player.sendMessage(ChatColor.AQUA + "/classregion delete <name>" + ChatColor.GRAY + " - Delete an existing region.");
+        player.sendMessage(
+                ChatColor.AQUA + "/classregion pos1" + ChatColor.GRAY + " - Set position 1 to your location.");
+        player.sendMessage(
+                ChatColor.AQUA + "/classregion pos2" + ChatColor.GRAY + " - Set position 2 to your location.");
+        player.sendMessage(ChatColor.AQUA + "/classregion create <name>" + ChatColor.GRAY
+                + " - Create a region with pos1 and pos2.");
+        player.sendMessage(
+                ChatColor.AQUA + "/classregion delete <name>" + ChatColor.GRAY + " - Delete an existing region.");
         player.sendMessage(ChatColor.AQUA + "/classregion list" + ChatColor.GRAY + " - List all defined regions.");
     }
 
@@ -149,7 +156,12 @@ public class ClassRegionCommand implements CommandExecutor, TabCompleter {
                 StringUtil.copyPartialMatches(args[1], candidates, completions);
             }
         }
-        Collections.sort(completions);
+
+        // If completions is empty, return an empty list to prevent player name
+        // completion
+        // But we need to be careful. If we return an empty list, it shows nothing.
+        // If we return null, it shows player names.
+        // We want to show nothing if there are no matches for our commands.
         return completions;
     }
 }

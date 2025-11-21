@@ -24,22 +24,24 @@ public class ClassItemRestrictionListener implements Listener {
 
         // Check if the clicked item or the item on the cursor is a class item
         boolean isClassItemInvolved = (clickedItem != null && plugin.isClassItem(clickedItem)) ||
-                                      (cursorItem != null && plugin.isClassItem(cursorItem));
+                (cursorItem != null && plugin.isClassItem(cursorItem));
 
         if (!isClassItemInvolved) {
             return;
         }
 
-        // If a class item is involved, prevent it from being moved into non-player inventories
+        // If a class item is involved, prevent it from being moved into non-player
+        // inventories
         if (event.getClickedInventory() != null && !(event.getClickedInventory() instanceof PlayerInventory)) {
             // This handles clicks inside the non-player inventory
             event.setCancelled(true);
         }
 
-        // This handles shift-clicking a class item from the player inventory to the other inventory
+        // This handles shift-clicking a class item from the player inventory to the
+        // other inventory
         if (event.isShiftClick() && event.getClickedInventory() instanceof PlayerInventory) {
             if (clickedItem != null && plugin.isClassItem(clickedItem)) {
-                 event.setCancelled(true);
+                event.setCancelled(true);
             }
         }
     }
@@ -51,11 +53,34 @@ public class ClassItemRestrictionListener implements Listener {
             // Check if any of the affected slots are outside the player's inventory
             for (int slot : event.getRawSlots()) {
                 // Raw slots are unique integers for each slot in the combined inventory view.
-                // If a raw slot index is less than the size of the top inventory, it's not in the player inventory.
+                // If a raw slot index is less than the size of the top inventory, it's not in
+                // the player inventory.
                 if (slot < event.getView().getTopInventory().getSize()) {
                     event.setCancelled(true);
                     return;
                 }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerInteractEntity(org.bukkit.event.player.PlayerInteractEntityEvent event) {
+        if (event.getRightClicked() instanceof org.bukkit.entity.ItemFrame) {
+            ItemStack item = event.getPlayer().getInventory().getItemInMainHand();
+            if (plugin.isClassItem(item)) {
+                event.setCancelled(true);
+                event.getPlayer().sendMessage(org.bukkit.ChatColor.RED + "You cannot put class items in Item Frames!");
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerInteractAtEntity(org.bukkit.event.player.PlayerInteractAtEntityEvent event) {
+        if (event.getRightClicked() instanceof org.bukkit.entity.ArmorStand) {
+            ItemStack item = event.getPlayer().getInventory().getItemInMainHand();
+            if (plugin.isClassItem(item)) {
+                event.setCancelled(true);
+                event.getPlayer().sendMessage(org.bukkit.ChatColor.RED + "You cannot put class items on Armor Stands!");
             }
         }
     }
