@@ -71,6 +71,35 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         this.playerTeamManager = new PlayerTeamManager(this);
         this.teamColorManager = new TeamColorManager(this); // Instantiate
         this.scoreboardManager = new ScoreboardManager(this, nexusManager, teamColorManager, playerTeamManager);
+
+        // Translation Components
+        ConfigManager configManager = new ConfigManager(this);
+        PlayerDataManager playerDataManager = new PlayerDataManager(this, configManager.getDefaultLanguage());
+
+        String mode = configManager.getTranslatorMode().toUpperCase();
+        com.example.annihilationnexus.translation.DeepLTranslator deepLTranslator = new com.example.annihilationnexus.translation.DeepLTranslator(
+                configManager.getDeepLApiKey());
+        com.example.annihilationnexus.translation.AzureTranslator azureTranslator = new com.example.annihilationnexus.translation.AzureTranslator(
+                configManager.getAzureApiKey(), configManager.getAzureRegion());
+        com.example.annihilationnexus.translation.TranslationService translationService;
+
+        switch (mode) {
+            case "DEEPL":
+                translationService = deepLTranslator;
+                getLogger().info("Using DeepL translator mode.");
+                break;
+            case "AZURE":
+                translationService = azureTranslator;
+                getLogger().info("Using Azure translator mode.");
+                break;
+            case "HYBRID":
+            default:
+                translationService = new com.example.annihilationnexus.translation.HybridTranslator(deepLTranslator,
+                        azureTranslator, getLogger());
+                getLogger().info("Using Hybrid translator mode.");
+                break;
+        }
+
         // Load data
         this.nexusManager.loadNexuses();
         this.teamColorManager.loadColors(); // Load colors
@@ -108,8 +137,13 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
                 .registerEvents(new FarmerListener(this, playerClassManager, protectedCropManager), this);
         getServer().getPluginManager().registerEvents(
                 new DeathMessageListener(playerClassManager, playerTeamManager, scoreboardManager), this);
-        getServer().getPluginManager().registerEvents(new PlayerChatListener(playerTeamManager, scoreboardManager),
+        getServer().getPluginManager().registerEvents(
+                new PlayerChatListener(this, playerTeamManager, scoreboardManager, playerDataManager,
+                        translationService),
                 this);
+
+        this.getCommand("chat").setExecutor(new com.example.annihilationnexus.commands.ChatCommand(playerDataManager));
+
         this.getCommand("class").setExecutor(new ClassCommand(this, playerClassManager));
         this.getCommand("class").setTabCompleter(new ClassTabCompleter(this));
         this.getCommand("nexus").setExecutor(new NexusAdminCommand(this, nexusManager));

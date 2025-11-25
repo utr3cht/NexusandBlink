@@ -10,6 +10,32 @@ AnnihilationNexus is a custom plugin for Minecraft servers running Spigot/Paper,
 - **Friendly Fire Control**: Administrators can enable or disable friendly fire for all teams using the `/anni friendlyfire` command. This setting is persistent.
 - **Live Scoreboard**: A sidebar scoreboard displays the real-time health of all nexuses.
 
+### Changelog
+- **Spy "Flee" Ability Fix**: The decoy NPC spawned by the Spy's "Flee" ability now correctly displays the Spy's team color, making it more convincing. The Spy's team is also properly restored after the ability wears off.
+
+## Chat Translation
+This plugin introduces a robust chat translation system, allowing players to communicate across different languages seamlessly.
+
+### Features
+-   **Player-Specific Language Settings**: Each player can choose their preferred target language.
+-   **Toggle Translation**: Players can enable or disable chat translation for incoming messages.
+-   **Multiple Translator Support**:
+    -   **DeepL**: High-quality translation service.
+    -   **Azure Translator**: Reliable fallback option or primary translator.
+    -   **Hybrid Mode**: Automatically falls back to Azure if DeepL's quota is exceeded.
+
+### Commands
+-   `/chat lang <EN|JA>`: Sets your target language for translations (e.g., `/chat lang JA` for Japanese).
+-   `/chat on`: Enables incoming chat message translation.
+-   `/chat off`: Disables incoming chat message translation.
+
+### Configuration (config.yml)
+-   `deepl-api-key`: Your DeepL API key (required for DeepL or Hybrid mode).
+-   `azure-api-key`: Your Azure Translator API key (required for Azure or Hybrid mode).
+-   `azure-region`: The Azure region for your Azure Translator service (e.g., `japaneast`).
+-   `default-language`: The default language for players if not set (`EN`, `JA`, etc.).
+-   `translator-mode`: Choose between `DEEPL`, `AZURE`, or `HYBRID`.
+
 ### Custom Classes & Abilities
 - **Persistence**: Player class data is saved and loaded, so players keep their class after relogging or server restarts.
 - **Team-Aware Abilities**: Most abilities now correctly distinguish between teammates and enemies.
@@ -37,7 +63,7 @@ AnnihilationNexus is a custom plugin for Minecraft servers running Spigot/Paper,
 - `/team <team_name>`: Joins the specified team.
 - `/togglescoreboard`: Toggles the visibility of the sidebar scoreboard.
 
-### Admin Commands (`annihilation.admin`)
+### Admin Commands (Requires Operator/OP status)
 - `/nexus create <teamName>`: Creates a nexus for the specified team at your current location.
 - `/nexus delete <teamName>`: Deletes the nexus for the specified team.
 - `/nexus setnexushp <teamName> <amount>`: Sets the health of a team's nexus.
@@ -49,7 +75,13 @@ AnnihilationNexus is a custom plugin for Minecraft servers running Spigot/Paper,
 - `annihilation.admin`: Grants access to all admin commands (`/nexus`, `/anni`, `/classregion`).
 
 ## Configuration
-The plugin generates configuration files in the `plugins/AnnihilationNexus/` directory. The `config.yml` allows you to customize nexus health, ability parameters, and more. A new `gameplay.friendly-fire` option is now available.
+The plugin generates configuration files in the `plugins/AnnihilationNexus/` directory. The `config.yml` allows you to customize various aspects:
+-   **Chat Translation Settings**: Refer to the "Chat Translation" section above for details on `deepl-api-key`, `azure-api-key`, `azure-region`, `default-language`, and `translator-mode`.
+-   **Nexus Settings**: Customize `nexus-material`, `nexus-health`, `xp-message`, `nexus-destruction-delay`, and `nexus-hit-delay`.
+-   **Ability Settings**: Fine-tune parameters for Grapple, Launcher Pad, Scorpio, Assassin, Farmer, Transporter, and Dasher abilities. This includes new options for Farmer's custom drops.
+-   **Gameplay Settings**: A new `gameplay.friendly-fire` option is available.
+-   **Scoreboard Customization**: Adjust `title` and `lines`.
+-   **Achievement Messages**: Configure `netherite-hoe-break-message`.
 
 ## Installation
 1.  Place the `AnnihilationNexus-X.X-SNAPSHOT.jar` file into your server's `plugins` directory.

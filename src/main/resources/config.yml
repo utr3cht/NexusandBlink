@@ -1,22 +1,46 @@
+# NexusandBlink Configuration
+
+# Chat Translation Settings
+# DeepL API Key (Required for primary translation)
+# Get one at https://www.deepl.com/pro-api
+deepl-api-key: ""
+
+# Azure Translator API Key (Fallback)
+# Get one at https://azure.microsoft.com/en-us/services/cognitive-services/translator/
+azure-api-key: ""
+
+# Azure Region (Required if using Azure)
+# e.g., global, eastus, westeurope
+azure-region: "japaneast"
+
+# Default Target Language
+# ISO 639-1 code (e.g., EN, JA, ES)
+default-language: "EN"
+
+# Translator Mode
+# Options: DEEPL, AZURE, HYBRID
+# HYBRID: Tries DeepL first, falls back to Azure on quota exceeded.
+translator-mode: "AZURE"
+
 nexus-material: END_STONE
 nexus-health: 75
-xp-message: "&a+12 Shotbow XP"
+xp-message: '&a+12 Shrektbow XP'
 nexus-destruction-delay: 1
-nexus-hit-delay: 20
+nexus-hit-delay: 1
 
 # Grapple Ability Settings
 grapple:
-  pull-strength-multiplier: 0.15
-  durability-loss-chance: 0.25
-  hook-speed-multiplier: 1.0
-  upward-pull-boost: 0.1
+  pull-strength-multiplier: 0.25
+  durability-loss-chance: 0.1
+  hook-speed-multiplier: 1.5
+  upward-pull-boost: 0.05
   hook-has-gravity: true
 
 # Launcher Pad Settings
 launcher-pad:
   iron-power: 6.0
   diamond-power: 8.0
-  emerald-power: 1.15
+  emerald-power: 1.2
   gold-power: 1.5
 
 # Scorpio Ability Settings
@@ -25,22 +49,24 @@ scorpio:
   enemy-pull-fall-immunity: 10
   friendly-pull-fall-immunity: 5
   stuck-duration-seconds: 1.5
-  distance-pull-multiplier: 0.1
+  distance-pull-multiplier: 0.4
+
 assassin:
   leap-cooldown: 40
-  leap-strength: 1.2
+  leap-strength: 1.4
+
 farmer:
   feast:
     cooldown: 30
-    radius: 13
+    radius: 13.0
     saturation: 4.0
   famine:
     cooldown: 90
-    radius: 13
+    radius: 13.0
     hunger-level: 20
     hunger-duration: 30
     food-level: 3
-  auto-replant-delay: 4 # in seconds
+  auto-replant-delay: 5 # in seconds
   extra-drops:
     grass:
       seed-chance: 0.1 # 10%
@@ -49,6 +75,25 @@ farmer:
     crops:
       apple-chance: 0.0025 # 1/400
       rare-material-chance: 0.01 # 1/100
+      custom-drops:
+      - chance: 0.0025
+        material: APPLE
+      - chance: 0.01
+        material: GHAST_TEAR
+      - chance: 0.01
+        material: NETHER_WART
+      - chance: 0.01
+        material: IRON_ORE
+      - chance: 0.01
+        material: BOOK
+      - chance: 0.01
+        material: SOUL_SAND
+      - chance: 0.001
+        material: DIAMOND
+      - chance: 1.0E-4
+        material: DIAMOND_BLOCK
+      - chance: 1.0E-6
+        material: NETHERITE_INGOT
   eating-bonus:
     chance: 0.3 # 30%
     extra-health: 2.0 # 1 heart
@@ -60,17 +105,19 @@ farmer:
 # %online_players% - Shows the number of online players.
 # NEXUS_STATUS - A special placeholder that will be replaced by the list of nexuses and their health.
 scoreboard:
-  title: "&e&lDecember SMP"
+  title: '&e&lDecember SMP'
   lines:
-    - "&7&m------------------"
-    - "NEXUS_STATUS"
-    - ""
-    - "&ePlayers: &f%online_players%"
-    - "&7&m------------------ "
+  - '&7&m------------------'
+  - '&eNexuses:'
+  - NEXUS_STATUS
+  - ''
+  - '&ePlayers: &f%online_players%'
+  - '&7&m------------------ '
 
 # Transporter Ability Settings
 transporter:
-  tp-distance-limit: 200.0
+  tp-distance-limit: 10000.0
+  remove-on-logout: false
 
 # Dasher Ability Settings
 dasher:
@@ -80,5 +127,9 @@ dasher:
 # Achievement Settings
 achievements:
   netherite-hoe-break-message:
-    en: "&aAchievement Unlocked: &fNetherite Hoe Breaker!"
-    ja: "&a実績解除: &fネザライトのクワ破壊者！"
+    en: '&aAchievement Unlocked: &fNetherite Hoe Breaker!'
+    ja: '&a実績解除: &fネザライトのクワ破壊者！'
+  netherite-hoe-break: []
+
+gameplay:
+  friendly-fire: false

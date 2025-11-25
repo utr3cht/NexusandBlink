@@ -19,8 +19,8 @@ commands:
   anni:
     description: Admin commands for Annihilation.
     usage: /anni [start|stop|reload]
-    permission: annihilation.admin
-    permission-message: You do not have permission to use this command.
+    usage: /anni [start|stop|reload]
+    default: op
   togglescoreboard:
     description: Toggle scoreboard visibility.
     usage: /togglescoreboard
@@ -29,6 +29,9 @@ commands:
     usage: /classregion [create|delete|list]
     permission: annihilation.admin
     permission-message: You do not have permission to use this command.
+  chat:
+    description: Manage chat translation settings
+    usage: /chat <lang|on|off> [args]
 
 permissions:
   annihilation.admin:
