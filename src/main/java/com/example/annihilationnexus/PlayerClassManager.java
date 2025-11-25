@@ -47,12 +47,20 @@ public class PlayerClassManager {
                     player.getInventory().setItem(i, null);
                 }
             }
+
+            // Also check the cursor
+            ItemStack cursorItem = player.getItemOnCursor();
+            if (cursorItem != null && plugin.isClassItem(cursorItem)) {
+                player.setItemOnCursor(null);
+            }
         }
     }
 
     private void givePlayerItem(Player player, ItemStack item) {
         if (player.getInventory().firstEmpty() == -1) {
-            player.sendMessage(org.bukkit.ChatColor.RED + "Your inventory is full. Could not receive class item: " + (item.hasItemMeta() && item.getItemMeta().hasDisplayName() ? item.getItemMeta().getDisplayName() : item.getType().name()));
+            player.sendMessage(org.bukkit.ChatColor.RED + "Your inventory is full. Could not receive class item: "
+                    + (item.hasItemMeta() && item.getItemMeta().hasDisplayName() ? item.getItemMeta().getDisplayName()
+                            : item.getType().name()));
             return;
         }
         player.getInventory().addItem(item);
@@ -93,7 +101,8 @@ public class PlayerClassManager {
 
         playerClasses.put(playerId, className);
         Player player = plugin.getServer().getPlayer(playerId);
-        if (player == null) return; // Player might be offline
+        if (player == null)
+            return; // Player might be offline
 
         // Before removing old abilities, check if the player was Transporter
         // and destroy their portals
@@ -102,7 +111,8 @@ public class PlayerClassManager {
             if (existingTransporterAbility != null) {
                 existingTransporterAbility.destroyAllPortalsForPlayer(playerId);
             } else {
-                plugin.getLogger().warning("TransporterAbility instance not found for player " + playerId + " despite being Transporter class.");
+                plugin.getLogger().warning("TransporterAbility instance not found for player " + playerId
+                        + " despite being Transporter class.");
             }
         }
 
@@ -224,16 +234,13 @@ public class PlayerClassManager {
             } else if (className.equalsIgnoreCase("scorpio")) {
                 scorpioAbilities.put(player.getUniqueId(), new ScorpioAbility(player, plugin));
                 addScorpioItem(player);
-            }
-            else if (className.equalsIgnoreCase("assassin")) {
+            } else if (className.equalsIgnoreCase("assassin")) {
                 assassinAbilities.put(player.getUniqueId(), new AssassinAbility(player, plugin));
                 addAssassinItem(player);
-            }
-            else if (className.equalsIgnoreCase("spy")) {
+            } else if (className.equalsIgnoreCase("spy")) {
                 spyAbilities.put(player.getUniqueId(), new SpyAbility(player, plugin));
                 addSpyItem(player);
-            }
-            else if (className.equalsIgnoreCase("transporter")) {
+            } else if (className.equalsIgnoreCase("transporter")) {
                 transporterAbilities.put(player.getUniqueId(), new TransporterAbility(plugin));
                 addTransporterItem(player);
             } else if (className.equalsIgnoreCase("farmer")) {

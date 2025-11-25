@@ -63,12 +63,12 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
                 handleColorCommand(player, args);
                 break;
             default:
-                // Fallback for old usage or invalid subcommand
-                // If the first argument is a team name, treat it as a join attempt for backward
-                // compatibility if desired,
-                // OR strictly enforce new usage. Given the request "team join colorで参加するように",
-                // strict enforcement is better.
-                sendUsage(player);
+                // Check if it is the admin command /team <username> <team_color>
+                if (args.length == 2 && sender.hasPermission("annihilation.admin")) {
+                    handleAdminSetTeamCommand(sender, args[0], args[1]);
+                } else {
+                    sendUsage(player);
+                }
                 break;
         }
         return true;
@@ -157,6 +157,10 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
+        // Force a fresh scoreboard to prevent client crashes due to desync
+        player.setScoreboard(org.bukkit.Bukkit.getScoreboardManager().getNewScoreboard());
+        scoreboardManager.updateScoreboard(player);
+
         scoreboardManager.setPlayerTeam(player, teamName);
         playerTeamManager.setPlayerTeam(player.getUniqueId(), teamName); // Save team choice
         player.sendMessage(ChatColor.GREEN + "You have joined team " + teamName + ".");
@@ -192,6 +196,11 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         playerTeamManager.setPlayerTeam(player.getUniqueId(), null);
+
+        // Force a fresh scoreboard to prevent client crashes due to desync
+        player.setScoreboard(org.bukkit.Bukkit.getScoreboardManager().getNewScoreboard());
+        scoreboardManager.updateScoreboard(player);
+
         scoreboardManager.removePlayerFromTeam(player);
         player.sendMessage(ChatColor.GREEN + "You have left your team.");
     }
@@ -228,5 +237,33 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
 
         Collections.sort(completions);
         return completions;
+    }
+
+    private void handleAdminSetTeamCommand(CommandSender sender, String targetPlayerName, String teamNameInput) {
+        Player targetPlayer = plugin.getServer().getPlayer(targetPlayerName);
+        if (targetPlayer == null) {
+            sender.sendMessage(ChatColor.RED + "Player '" + targetPlayerName + "' is not online.");
+            return;
+        }
+
+        String teamName = teamNameInput.toUpperCase(Locale.ROOT);
+        if (nexusManager.getNexus(teamName) == null) {
+            sender.sendMessage(ChatColor.RED + "Team '" + teamName + "' does not exist.");
+            return;
+        }
+
+        // Force set team
+        // Update persistence first
+        playerTeamManager.setPlayerTeam(targetPlayer.getUniqueId(), teamName);
+
+        // Force a fresh scoreboard to prevent client crashes due to desync
+        targetPlayer.setScoreboard(org.bukkit.Bukkit.getScoreboardManager().getNewScoreboard());
+        scoreboardManager.updateScoreboard(targetPlayer);
+
+        // Update all scoreboards (including the new one)
+        scoreboardManager.setPlayerTeam(targetPlayer, teamName);
+
+        sender.sendMessage(ChatColor.GREEN + "Set " + targetPlayer.getName() + "'s team to " + teamName + ".");
+        targetPlayer.sendMessage(ChatColor.GREEN + "Your team has been set to " + teamName + " by an admin.");
     }
 }

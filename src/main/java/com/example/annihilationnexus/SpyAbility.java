@@ -123,13 +123,13 @@ public class SpyAbility {
     }
 
     private void spawnDecoy() {
-        // Save current team before fleeing
-        org.bukkit.scoreboard.Scoreboard sb = player.getScoreboard();
-        if (sb != null) {
-            org.bukkit.scoreboard.Team currentTeam = sb.getEntryTeam(player.getName());
-            if (currentTeam != null) {
-                fleeingTeam.put(player.getUniqueId(), currentTeam.getName());
-            }
+        // Save current team before fleeing using PlayerTeamManager (more reliable)
+        String currentTeamName = plugin.getPlayerTeamManager().getPlayerTeam(player.getUniqueId());
+        if (currentTeamName != null) {
+            fleeingTeam.put(player.getUniqueId(), currentTeamName);
+            plugin.getLogger().info("Spy Flee: Saved team " + currentTeamName + " for player " + player.getName());
+        } else {
+            plugin.getLogger().warning("Spy Flee: Could not find team for player " + player.getName());
         }
 
         NPCRegistry registry = CitizensAPI.getNPCRegistry();
@@ -144,10 +144,19 @@ public class SpyAbility {
 
         npc.getNavigator().setTarget(player.getLocation().add(player.getLocation().getDirection().multiply(10)));
 
+        // Re-apply team to ensure the NPC (which shares the player's name) gets the
+        // correct team color
+        if (fleeingTeam.containsKey(player.getUniqueId())) {
+            String teamName = fleeingTeam.get(player.getUniqueId());
+            plugin.getScoreboardManager().setPlayerTeam(player, teamName);
+            plugin.getLogger().info("Spy Flee: Applied team " + teamName + " to NPC/Player " + player.getName());
+        }
+
         new BukkitRunnable() {
             @Override
             public void run() {
-                isFleeing = false; // Set fleeing to false when effect ends
+                // isFleeing = false; // Moved to the end of the method to prevent race
+                // conditions
                 if (npc != null) {
                     npc.destroy();
                 }
@@ -190,11 +199,22 @@ public class SpyAbility {
                 // Restore player to their original team
                 if (fleeingTeam.containsKey(player.getUniqueId())) {
                     String teamName = fleeingTeam.get(player.getUniqueId());
+
+                    // Force refresh the player's scoreboard to clear any ghost states from the NPC
+                    plugin.getScoreboardManager().updateScoreboard(player);
+
+                    // Re-apply team
                     plugin.getScoreboardManager().setPlayerTeam(player, teamName);
+
+                    plugin.getLogger().info("Spy Flee: Restored player " + player.getName() + " to team " + teamName);
                     fleeingTeam.remove(player.getUniqueId());
+                } else {
+                    plugin.getLogger()
+                            .warning("Spy Flee: No saved team found for restoration for player " + player.getName());
                 }
 
                 updateItemLore(); // Update item lore after effect ends
+                isFleeing = false; // Set fleeing to false ONLY after all cleanup is done
             }
         }.runTaskLater(plugin, 120L); // Remove after 6 seconds
     }

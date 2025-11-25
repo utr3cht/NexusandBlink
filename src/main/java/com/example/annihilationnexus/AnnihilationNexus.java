@@ -570,7 +570,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
     }
 
     public double getTpDistanceLimit() {
-        return getConfig().getDouble("transporteractive.tp-distance-limit", 20.0); // Default to 20 blocks
+        return getConfig().getDouble("transporter.tp-distance-limit", 20.0); // Default to 20 blocks
     }
 
     public int getDasherMaxBlinkDistance() {

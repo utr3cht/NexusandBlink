@@ -66,6 +66,22 @@ public class ClassItemListener implements Listener {
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
         event.getDrops().removeIf(plugin::isClassItem); // Remove class items from drops
+
+        // Also remove from inventory to prevent plugins (like DeadChest) from grabbing
+        // them directly
+        ItemStack[] contents = player.getInventory().getContents();
+        for (int i = 0; i < contents.length; i++) {
+            ItemStack item = contents[i];
+            if (item != null && plugin.isClassItem(item)) {
+                player.getInventory().setItem(i, null);
+            }
+        }
+        // Also check cursor (though unlikely to be held on death, good measure)
+        ItemStack cursor = player.getItemOnCursor();
+        if (cursor != null && plugin.isClassItem(cursor)) {
+            player.setItemOnCursor(null);
+        }
+
         player.sendMessage(ChatColor.YELLOW + "Your class items disappeared upon death.");
     }
 

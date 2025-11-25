@@ -14,10 +14,10 @@ grapple:
 
 # Launcher Pad Settings
 launcher-pad:
-  iron-power: 2.0
-  diamond-power: 4.0
-  emerald-power: 1.5
-  gold-power: 2.0
+  iron-power: 6.0
+  diamond-power: 8.0
+  emerald-power: 1.15
+  gold-power: 1.5
 
 # Scorpio Ability Settings
 scorpio:
@@ -27,7 +27,7 @@ scorpio:
   stuck-duration-seconds: 1.5
   distance-pull-multiplier: 0.1
 assassin:
-  leap-cooldown: 10
+  leap-cooldown: 40
   leap-strength: 1.2
 farmer:
   feast:
@@ -40,7 +40,7 @@ farmer:
     hunger-level: 20
     hunger-duration: 30
     food-level: 3
-  auto-replant-delay: 3 # in seconds
+  auto-replant-delay: 4 # in seconds
   extra-drops:
     grass:
       seed-chance: 0.1 # 10%
@@ -60,10 +60,9 @@ farmer:
 # %online_players% - Shows the number of online players.
 # NEXUS_STATUS - A special placeholder that will be replaced by the list of nexuses and their health.
 scoreboard:
-  title: "&e&lAnnihilation"
+  title: "&e&lDecember SMP"
   lines:
     - "&7&m------------------"
-    - "&eNexuses:"
     - "NEXUS_STATUS"
     - ""
     - "&ePlayers: &f%online_players%"
@@ -71,12 +70,12 @@ scoreboard:
 
 # Transporter Ability Settings
 transporter:
-  tp-distance-limit: 20.0
+  tp-distance-limit: 200.0
 
 # Dasher Ability Settings
 dasher:
-  max-blink-distance: 15
-  min-blink-distance: 3
+  max-blink-distance: 19
+  min-blink-distance: 4
 
 # Achievement Settings
 achievements:
