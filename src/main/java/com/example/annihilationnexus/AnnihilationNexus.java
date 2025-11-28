@@ -59,7 +59,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
 
         // Config handling
         saveDefaultConfig(); // Ensure config.yml exists with defaults
-        reloadConfig(); // Load the config from disk
+        this.reload(); // Load the config from disk and merge defaults
         this.friendlyFireEnabled = getConfig().getBoolean("gameplay.friendly-fire", false);
         loadAchievedNetheriteHoeBreak(); // Load achievement data
 
@@ -278,6 +278,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
             config.set("farmer.extra-drops.crops.custom-drops", defaultDrops);
             saveConfig();
         }
+
     }
 
     public Material getNexusMaterial() {

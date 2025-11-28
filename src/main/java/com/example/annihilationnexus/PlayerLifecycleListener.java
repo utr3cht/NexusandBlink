@@ -14,7 +14,8 @@ public class PlayerLifecycleListener implements Listener {
     private final PlayerClassManager playerClassManager;
     private final PlayerTeamManager playerTeamManager;
 
-    public PlayerLifecycleListener(AnnihilationNexus plugin, ScoreboardManager scoreboardManager, PlayerClassManager playerClassManager, PlayerTeamManager playerTeamManager) {
+    public PlayerLifecycleListener(AnnihilationNexus plugin, ScoreboardManager scoreboardManager,
+            PlayerClassManager playerClassManager, PlayerTeamManager playerTeamManager) {
         this.plugin = plugin;
         this.scoreboardManager = scoreboardManager;
         this.playerClassManager = playerClassManager;
@@ -33,6 +34,12 @@ public class PlayerLifecycleListener implements Listener {
             scoreboardManager.setPlayerTeam(player, teamName);
             player.sendMessage(ChatColor.GREEN + "You have automatically rejoined team " + teamName + ".");
         }
+
+        // Update rank prefix (Tab List)
+        scoreboardManager.updatePlayerPrefix(player);
+
+        // Update scoreboard for everyone to reflect new player count
+        scoreboardManager.updateForAllPlayers();
     }
 
     @EventHandler

@@ -87,18 +87,12 @@ public class PlayerChatListener implements Listener {
         Rank rank = rankManager.getDisplayRank(player);
         String rankPrefix = (rank != null) ? rank.getPrefix() : "";
 
-        // Class Abbreviation
-        String className = playerClassManager.getPlayerClass(player.getUniqueId());
-        String classAbbr = getClassAbbreviation(className);
-
         // Manually construct the player name part with team color
         String coloredPlayerName = teamColor + player.getName() + ChatColor.RESET;
 
         // Construct the final message format (without message content yet)
-        // Format: [Rank] [Team] Name (Class) : Message
-        // Class is colored with Team Color
-        String prefix = rankPrefix + teamPrefix + coloredPlayerName + " " + teamColor + "(" + classAbbr + ")"
-                + ChatColor.RESET + " : " + ChatColor.WHITE;
+        // Format: [Rank] [Team] Name : Message
+        String prefix = rankPrefix + teamPrefix + coloredPlayerName + ChatColor.RESET + " : " + ChatColor.WHITE;
 
         // Send to all players with translation if needed
         for (Player recipient : Bukkit.getOnlinePlayers()) {

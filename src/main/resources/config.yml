@@ -41,6 +41,30 @@ xp-rewards:
     SPIDER: 1
     CREEPER: 2
     ENDERMAN: 5
+    BLAZE: 3
+    CAVE_SPIDER: 2
+    DROWNED: 2
+    ELDER_GUARDIAN: 10
+    ENDERMITE: 1
+    EVOKER: 5
+    GHAST: 5
+    GUARDIAN: 3
+    HOGLIN: 3
+    HUSK: 2
+    MAGMA_CUBE: 1
+    PHANTOM: 3
+    PIGLIN_BRUTE: 5
+    PILLAGER: 2
+    RAVAGER: 10
+    SHULKER: 5
+    SLIME: 1
+    STRAY: 2
+    VEX: 1
+    VINDICATOR: 3
+    WITCH: 3
+    WITHER_SKELETON: 3
+    ZOGLIN: 5
+    ZOMBIE_VILLAGER: 1
   bosses:
     WARDEN: 100
     WITHER: 100

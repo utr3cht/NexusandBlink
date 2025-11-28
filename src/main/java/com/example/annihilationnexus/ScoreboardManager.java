@@ -217,7 +217,11 @@ public class ScoreboardManager {
     private void configureTeam(Team team, String teamName) {
         ChatColor color = getTeamColor(teamName);
         team.setColor(color);
-        team.setPrefix(color + "");
+
+        // Capitalize team name for display
+        String displayName = teamName.substring(0, 1).toUpperCase() + teamName.substring(1).toLowerCase();
+        team.setPrefix(ChatColor.WHITE + "[" + color + displayName + ChatColor.WHITE + "] " + color);
+
         boolean ffEnabled = plugin.isFriendlyFireEnabled();
         team.setAllowFriendlyFire(ffEnabled); // Standard for Annihilation
         team.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.ALWAYS);
