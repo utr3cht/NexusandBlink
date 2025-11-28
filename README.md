@@ -1,97 +1,91 @@
 # AnnihilationNexus
 
-AnnihilationNexus is a custom plugin for Minecraft servers running Spigot/Paper, designed for the Annihilation game mode. It provides a robust Nexus system, custom classes with unique abilities, and team-based gameplay mechanics.
+AnnihilationNexusは、Annihilationゲームモード用に設計された、Spigot/Paperで動作するMinecraftサーバー向けのカスタムプラグインです。堅牢なネクサスシステム、ユニークなアビリティを持つカスタムクラス、チームベースのゲームプレイメカニクスを提供します。
 
-## Features
+## 主な機能
 
-### Team-Based Gameplay
-- **Nexus System**: Create and manage nexuses for different teams. When a team's nexus is destroyed, that team is eliminated.
-- **Team Management**: Players can join teams using the `/team` command. Their team choice is saved, and they will automatically rejoin upon logging back in.
-- **Friendly Fire Control**: Administrators can enable or disable friendly fire for all teams using the `/anni friendlyfire` command. This setting is persistent.
-- **Live Scoreboard**: A sidebar scoreboard displays the real-time health of all nexuses.
+- **ネクサスシステム**: チームごとにネクサスを作成・管理します。ネクサスが破壊されると、そのチームは敗退となります。
+- **チーム管理**: `/team`コマンドでチームに参加できます。チーム選択は保存され、再ログイン時に自動的に参加します。
+- **クラスシステム**: それぞれがユニークなアビリティを持つ、多様なクラスを選択できます。
+- **スコアボード**: すべてのネクサスの体力をリアルタイムで表示するサイドバー。
+- **チャット翻訳**: DeepLやAzure Translator APIを利用し、プレイヤー間のチャットをリアルタイムで翻訳します。
+- **ランキングシステム**: プレイヤーにランクを付与し、表示上のプレフィックスを変更できます。
+- **管理者用コマンド**: ゲームを管理するための豊富なコマンドセット。
+- **設定ファイル**: `config.yml`と`regions.yml`で、プラグインの多くの側面をカスタマイズ可能です。
 
-### Changelog
-- **Spy "Flee" Ability Fix**: The decoy NPC spawned by the Spy's "Flee" ability now correctly displays the Spy's team color, making it more convincing. The Spy's team is also properly restored after the ability wears off.
+## コマンド
 
-## Chat Translation
-This plugin introduces a robust chat translation system, allowing players to communicate across different languages seamlessly.
+### プレイヤーコマンド
 
-### Features
--   **Player-Specific Language Settings**: Each player can choose their preferred target language.
--   **Toggle Translation**: Players can enable or disable chat translation for incoming messages.
--   **Multiple Translator Support**:
-    -   **DeepL**: High-quality translation service.
-    -   **Azure Translator**: Reliable fallback option or primary translator.
-    -   **Hybrid Mode**: Automatically falls back to Azure if DeepL's quota is exceeded.
+- `/class [クラス名]`: クラスを選択します。クラス名を指定しない場合、GUIが開きます。
+- `/team <チーム名>`: 指定したチームに参加します。
+- `/togglescoreboard`: スコアボードの表示/非表示を切り替えます。
+- `/myxp`: 現在のXP（経験値）を確認します。
+- `/sbrank`: 表示されるランクプレフィックスを変更するためのGUIを開きます。
+- `/chat <lang|on|off> [引数]`: チャット翻訳の設定を管理します。
+    - `lang <EN|JAなど>`: 翻訳のターゲット言語を設定します。
+    - `on`: メッセージの翻訳を有効にします。
+    - `off`: メッセージの翻訳を無効にします。
 
-### Commands
--   `/chat lang <EN|JA>`: Sets your target language for translations (e.g., `/chat lang JA` for Japanese).
--   `/chat on`: Enables incoming chat message translation.
--   `/chat off`: Disables incoming chat message translation.
+### 管理者コマンド (OP権限または`annihilation.admin`パーミッションが必要)
 
-### Configuration (config.yml)
--   `deepl-api-key`: Your DeepL API key (required for DeepL or Hybrid mode).
--   `azure-api-key`: Your Azure Translator API key (required for Azure or Hybrid mode).
--   `azure-region`: The Azure region for your Azure Translator service (e.g., `japaneast`).
--   `default-language`: The default language for players if not set (`EN`, `JA`, etc.).
--   `translator-mode`: Choose between `DEEPL`, `AZURE`, or `HYBRID`.
+- `/anni <reload|friendlyfire|rank>`: プラグインの管理コマンドです。
+    - `reload`: 設定ファイルをリロードします。
+    - `friendlyfire <on|off>`: フレンドリーファイアを有効/無効にします。
+    - `rank <set|give|remove> <プレイヤー> [ランク]`: プレイヤーのランクを管理します。
+- `/nexus <create|destroy|sethealth>`: ネクサスの管理コマンドです。
+    - `create <チーム名>`: 現在地にチームのネクサスを作成します。
+    - `destroy <チーム名>`: チームのネクサスを破壊します。
+    - `sethealth <チーム名> <体力値>`: チームのネクサスの体力を設定します。
+- `/classregion <create|delete|list>`: クラス専用エリアを管理します。
 
-### Custom Classes & Abilities
-- **Persistence**: Player class data is saved and loaded, so players keep their class after relogging or server restarts.
-- **Team-Aware Abilities**: Most abilities now correctly distinguish between teammates and enemies.
-- **Available Classes**:
-  - **Dasher**: A highly mobile class with a **Blink** ability.
-  - **Scout**: A versatile class with a **Grapple** ability.
-  - **Scorpio**: A tactical class with a **Scorpio Hook**. Right-click to pull enemies, and left-click to pull yourself to teammates.
-  - **Assassin**: A stealthy class with a **Leap** ability.
-  - **Spy**: A deceptive class with **Vanish** and **Flee** abilities.
-  - **Farmer**: A support class with unique farming abilities.
-    - **Feast**: Restore hunger for all nearby teammates, regardless of their class.
-    - **Famine**: Inflict hunger and reduce food levels of all nearby enemies.
-    - **Protected Crops**: Crops planted by a Farmer are protected. Only teammates can break them when fully grown, while enemies can break them at any time.
-  - **Transporter**: A utility class with the ability to set up teleporters.
+## クラスとアビリティ
 
-### Other Features
-- **Launcher Pads**: Create launcher pads for quick transportation.
-- **Configurable Abilities**: Fine-tune ability parameters in the `config.yml`.
-- **Custom Kill Messages**: Kill messages are formatted to show the class of both the victim and the killer (e.g., `playerA(FAR) was killed by playerB(ASN)`).
+- **Dasher**: 高い機動力を持つクラス。**Blink**アビリティを使用できます。
+- **Scout**: 汎用的なクラス。**Grapple**（グラップル）アビリティを使用できます。
+- **Scorpio**: 戦術的なクラス。**Scorpio Hook**で敵を引き寄せたり、味方のもとへ移動したりできます。
+- **Assassin**: ステルス性の高いクラス。**Leap**アビリティを使用できます。
+- **Spy**: 敵を欺くクラス。**Vanish**（透明化）と**Flee**（デコイ設置）アビリティを使用できます。
+- **Farmer**: サポートクラス。農業に関するユニークな能力を持ちます。
+    - **Feast**: 近くの味方全員の満腹度を回復させます。
+    - **Famine**: 近くの敵に空腹効果を与えます。
+- **Transporter**: テレポーターを設置できるユーティリティクラス。
 
-## Commands
+## チャット翻訳機能
 
-### Player Commands
-- `/class [class_name]`: Selects your class. If a class name is provided, it selects that class. If not, it opens a class selection GUI.
-- `/team <team_name>`: Joins the specified team.
-- `/togglescoreboard`: Toggles the visibility of the sidebar scoreboard.
+プレイヤー間のコミュニケーションを円滑にするため、リアルタイムのチャット翻訳機能を搭載しています。
 
-### Admin Commands (Requires Operator/OP status)
-- `/nexus create <teamName>`: Creates a nexus for the specified team at your current location.
-- `/nexus delete <teamName>`: Deletes the nexus for the specified team.
-- `/nexus setnexushp <teamName> <amount>`: Sets the health of a team's nexus.
-- `/anni reload`: Reloads the plugin configuration.
-- `/anni friendlyfire <on|off|true|false>`: Enables or disables friendly fire.
-- `/classregion [create|delete|list]`: Manages class-restricted regions.
+- **対応サービス**: DeepL, Azure Translator, またはその両方を使用するハイブリッドモード。
+- **言語設定**: プレイヤーは個別に翻訳先の言語を設定できます。
+- **有効/無効化**: プレイヤーはいつでも翻訳機能のオン/オフを切り替えられます。
+- **設定 (`config.yml`):**
+    - `deepl-api-key`: DeepLのAPIキー。
+    - `azure-api-key`: Azure TranslatorのAPIキー。
+    - `azure-region`: Azure Translatorのリージョン。
+    - `translator-mode`: `DEEPL`, `AZURE`, `HYBRID`から選択。
 
-## Permissions
-- `annihilation.admin`: Grants access to all admin commands (`/nexus`, `/anni`, `/classregion`).
+## ランキングシステム
 
-## Configuration
-The plugin generates configuration files in the `plugins/AnnihilationNexus/` directory. The `config.yml` allows you to customize various aspects:
--   **Chat Translation Settings**: Refer to the "Chat Translation" section above for details on `deepl-api-key`, `azure-api-key`, `azure-region`, `default-language`, and `translator-mode`.
--   **Nexus Settings**: Customize `nexus-material`, `nexus-health`, `xp-message`, `nexus-destruction-delay`, and `nexus-hit-delay`.
--   **Ability Settings**: Fine-tune parameters for Grapple, Launcher Pad, Scorpio, Assassin, Farmer, Transporter, and Dasher abilities. This includes new options for Farmer's custom drops.
--   **Gameplay Settings**: A new `gameplay.friendly-fire` option is available.
--   **Scoreboard Customization**: Adjust `title` and `lines`.
--   **Achievement Messages**: Configure `netherite-hoe-break-message`.
+`/sbrank`コマンドでGUIを開き、プレイヤーは自分が表示したいランク（過去に付与されたもの）を選択できます。管理者は`/anni rank`コマンドでプレイヤーにランクを付与・剥奪できます。
 
-## Installation
-1.  Place the `AnnihilationNexus-X.X-SNAPSHOT.jar` file into your server's `plugins` directory.
-2.  Start or restart your server.
-3.  Configure the `config.yml` file to your liking.
-4.  Use the in-game commands to set up your nexuses and teams.
+- **利用可能なランク**: Silver, Gold, Platinum, Emerald, Obsidian, Ruby
 
-## Building from Source
-This project uses Apache Maven.
-1.  Clone the repository.
-2.  Navigate to the project directory.
-3.  Run `mvn clean install`.
-4.  The compiled JAR file will be located in the `target` directory.
+## パーミッション
+
+- `annihilation.admin`: すべての管理者コマンドへのアクセスを許可します。（`/anni`, `/nexus`, `/classregion`）
+
+## インストール
+
+1.  `AnnihilationNexus-X.X-SNAPSHOT.jar`ファイルをサーバーの`plugins`ディレクトリに配置します。
+2.  サーバーを起動または再起動します。
+3.  必要に応じて`plugins/AnnihilationNexus/`フォルダ内に生成された`config.yml`を編集します。
+4.  ゲーム内コマンドを使用して、チームやネクサスを設定します。
+
+## ソースからのビルド
+
+このプロジェクトはApache Mavenを使用しています。
+
+1.  リポジトリをクローンします。
+2.  プロジェクトディレクトリに移動します。
+3.  `mvn clean install`を実行します。
+4.  コンパイルされたJARファイルが`target`ディレクトリに生成されます。

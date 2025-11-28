@@ -39,6 +39,8 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
     private ProtectedCropManager protectedCropManager;
     private PlayerTeamManager playerTeamManager;
     private TeamColorManager teamColorManager; // Add field
+    private RankManager rankManager; // Add RankManager field
+    private XpManager xpManager; // Add XpManager field
     private NamespacedKey classKey;
     private final Set<UUID> noFall = ConcurrentHashMap.newKeySet();
     private final Map<UUID, BukkitTask> noFallTasks = new ConcurrentHashMap<>();
@@ -70,7 +72,10 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         this.playerClassManager = new PlayerClassManager(this);
         this.playerTeamManager = new PlayerTeamManager(this);
         this.teamColorManager = new TeamColorManager(this); // Instantiate
-        this.scoreboardManager = new ScoreboardManager(this, nexusManager, teamColorManager, playerTeamManager);
+        this.rankManager = new RankManager(this); // Instantiate RankManager
+        this.xpManager = new XpManager(this, rankManager); // Instantiate XpManager
+        this.scoreboardManager = new ScoreboardManager(this, nexusManager, teamColorManager, playerTeamManager,
+                rankManager);
 
         // Translation Components
         ConfigManager configManager = new ConfigManager(this);
@@ -117,7 +122,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         }.runTaskLater(this, 20L);
 
         // Registering events and commands
-        getServer().getPluginManager().registerEvents(new NexusListener(this, nexusManager), this);
+        getServer().getPluginManager().registerEvents(new NexusListener(this, nexusManager, xpManager), this);
         getServer().getPluginManager().registerEvents(
                 new PlayerLifecycleListener(this, scoreboardManager, playerClassManager, playerTeamManager), this);
         getServer().getPluginManager().registerEvents(new BlinkListener(this), this);
@@ -132,24 +137,29 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new TransporterListener(this), this);
         getServer().getPluginManager().registerEvents(new ClassItemListener(this), this);
         getServer().getPluginManager().registerEvents(new ClassSelectionListener(this, playerClassManager), this);
+        getServer().getPluginManager().registerEvents(new com.example.annihilationnexus.gui.SbRankGUI(this), this);
         getServer().getPluginManager().registerEvents(new ClassItemRestrictionListener(this), this);
         getServer().getPluginManager()
                 .registerEvents(new FarmerListener(this, playerClassManager, protectedCropManager), this);
         getServer().getPluginManager().registerEvents(
-                new DeathMessageListener(playerClassManager, playerTeamManager, scoreboardManager), this);
+                new DeathMessageListener(playerClassManager, playerTeamManager, scoreboardManager, xpManager,
+                        nexusManager),
+                this);
         getServer().getPluginManager().registerEvents(
                 new PlayerChatListener(this, playerTeamManager, scoreboardManager, playerDataManager,
-                        translationService),
+                        translationService, rankManager, playerClassManager),
                 this);
+        getServer().getPluginManager().registerEvents(new MobDeathListener(this, xpManager), this);
 
         this.getCommand("chat").setExecutor(new com.example.annihilationnexus.commands.ChatCommand(playerDataManager));
-
         this.getCommand("class").setExecutor(new ClassCommand(this, playerClassManager));
         this.getCommand("class").setTabCompleter(new ClassTabCompleter(this));
         this.getCommand("nexus").setExecutor(new NexusAdminCommand(this, nexusManager));
         this.getCommand("nexus").setTabCompleter(new NexusAdminTabCompleter(nexusManager));
         this.getCommand("anni").setExecutor(new AnniAdminCommand(this));
         this.getCommand("anni").setTabCompleter(new AnniAdminTabCompleter());
+        this.getCommand("myxp").setExecutor(new MyXpCommand(xpManager));
+        this.getCommand("sbrank").setExecutor(new com.example.annihilationnexus.commands.SbRankCommand(this));
         this.getCommand("togglescoreboard").setExecutor(new ToggleScoreboardCommand(scoreboardManager));
         this.getCommand("classregion").setExecutor(new ClassRegionCommand(this, classRegionManager));
         this.getCommand("classregion").setTabCompleter(new ClassRegionCommand(this, classRegionManager));
@@ -284,7 +294,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
     }
 
     public String getXpMessage() {
-        return ChatColor.translateAlternateColorCodes('&', getConfig().getString("xp-message", "&a+12 Shotbow XP"));
+        return ChatColor.translateAlternateColorCodes('&', getConfig().getString("xp-message", "&a+12 Shrektbow XP"));
     }
 
     public int getNexusDestructionDelay() {
@@ -377,6 +387,14 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
 
     public TeamColorManager getTeamColorManager() {
         return teamColorManager;
+    }
+
+    public RankManager getRankManager() {
+        return rankManager;
+    }
+
+    public XpManager getXpManager() {
+        return xpManager;
     }
 
     public void reload() {
@@ -782,5 +800,38 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
 
     public boolean isFriendlyFireEnabled() {
         return this.friendlyFireEnabled;
+    }
+
+    public String getNexusDestroyedMessage() {
+        return ChatColor.translateAlternateColorCodes('&',
+                getConfig().getString("nexus-destroyed-message", "&5The %team% nexus has been destroyed!"));
+    }
+
+    public int getNexusDamageXp() {
+        return getConfig().getInt("xp-rewards.nexus-damage", 1);
+    }
+
+    public int getPlayerKillXp() {
+        return getConfig().getInt("xp-rewards.player-kill", 3);
+    }
+
+    public int getDefenseBonusXp() {
+        return getConfig().getInt("xp-rewards.defense-bonus", 6);
+    }
+
+    public int getOffenseBonusXp() {
+        return getConfig().getInt("xp-rewards.offense-bonus", 6);
+    }
+
+    public int getAvengerBonusXp() {
+        return getConfig().getInt("xp-rewards.avenger-bonus", 6);
+    }
+
+    public int getMobXp(org.bukkit.entity.EntityType type) {
+        return getConfig().getInt("xp-rewards.mobs." + type.name(), 0);
+    }
+
+    public int getBossXp(org.bukkit.entity.EntityType type) {
+        return getConfig().getInt("xp-rewards.bosses." + type.name(), 0);
     }
 }

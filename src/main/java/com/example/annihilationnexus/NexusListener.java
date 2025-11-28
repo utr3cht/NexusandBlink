@@ -24,11 +24,13 @@ public class NexusListener implements Listener {
 
     private final AnnihilationNexus plugin;
     private final NexusManager nexusManager;
+    private final XpManager xpManager;
     private final Map<String, Long> lastHitTimes = new HashMap<>();
 
-    public NexusListener(AnnihilationNexus plugin, NexusManager nexusManager) {
+    public NexusListener(AnnihilationNexus plugin, NexusManager nexusManager, XpManager xpManager) {
         this.plugin = plugin;
         this.nexusManager = nexusManager;
+        this.xpManager = xpManager;
     }
 
     @EventHandler
@@ -110,13 +112,18 @@ public class NexusListener implements Listener {
             }
 
             // Send messages
-            player.sendMessage(plugin.getXpMessage());
+            // player.sendMessage(plugin.getXpMessage()); // Removed hardcoded message
+            int xpAmount = plugin.getNexusDamageXp();
+            if (xpAmount > 0) {
+                xpManager.giveXp(player, xpAmount, "Nexus Damage");
+            }
 
             // Update scoreboard
             plugin.getScoreboardManager().updateForAllPlayers();
 
             if (nexus.isDestroyed()) {
-                player.getServer().broadcastMessage("The " + nexus.getTeamName() + " nexus has been destroyed!");
+                String destroyMessage = plugin.getNexusDestroyedMessage().replace("%team%", nexus.getTeamName());
+                player.getServer().broadcastMessage(destroyMessage);
 
                 // Schedule explosion effect and replace with bedrock with a 1-tick delay
                 if (world != null) {

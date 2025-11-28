@@ -27,15 +27,53 @@ public class ScoreboardManager {
     private final NexusManager nexusManager;
     private final TeamColorManager teamColorManager;
     private final PlayerTeamManager playerTeamManager;
+    private final RankManager rankManager;
     private final Map<UUID, Boolean> scoreboardVisibility = new HashMap<>(); // Player UUID -> is visible?
 
     public ScoreboardManager(AnnihilationNexus plugin, NexusManager nexusManager, TeamColorManager teamColorManager,
-            PlayerTeamManager playerTeamManager) {
+            PlayerTeamManager playerTeamManager, RankManager rankManager) {
         this.plugin = plugin;
         this.nexusManager = nexusManager;
         this.teamColorManager = teamColorManager;
         this.playerTeamManager = playerTeamManager;
+        this.rankManager = rankManager;
         loadScoreboardVisibility();
+    }
+
+    public void updatePlayerPrefix(Player player) {
+        Rank rank = rankManager.getDisplayRank(player);
+        String prefix = rank.getPrefix();
+        String teamName = playerTeamManager.getPlayerTeam(player.getUniqueId());
+        ChatColor teamColor = (teamName != null) ? getTeamColor(teamName) : ChatColor.WHITE;
+
+        // Update Tab List Name
+        player.setPlayerListName(prefix + teamColor + player.getName());
+
+        // Update Scoreboard Team Prefix (if needed, though Tab List Name usually
+        // overrides for list)
+        // But for name tag above head, we need to update the team prefix/suffix
+        // However, we are using teams for coloring, so we might not want to mess with
+        // prefix too much if it breaks coloring.
+        // Actually, team prefix is used for color usually.
+        // Let's just stick to setPlayerListName for now as per previous requirements.
+
+        // Wait, if we want the prefix to show above head, we need to add it to the team
+        // prefix.
+        // But the team prefix is currently set to the color.
+        // Let's append the rank prefix to the team prefix.
+
+        Scoreboard mainSb = Bukkit.getScoreboardManager().getMainScoreboard();
+        if (teamName != null) {
+            Team team = mainSb.getTeam(teamName);
+            if (team != null) {
+                // We can't easily change the team prefix for just one player if they share the
+                // team.
+                // So we can't show rank prefix in name tag above head unless we have per-player
+                // teams or per-rank teams.
+                // Given the constraints, we will only update the Tab List Name and Chat format
+                // (handled in ChatListener).
+            }
+        }
     }
 
     public void updateScoreboard(Player player) {
@@ -44,53 +82,30 @@ public class ScoreboardManager {
             return;
         }
 
+        // Use Main Scoreboard to allow tab list (deaths) and other plugins to work
+        player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
+    }
+
+    private void updateSidebar() {
         FileConfiguration config = plugin.getConfig();
         ConfigurationSection scoreboardConfig = config.getConfigurationSection("scoreboard");
         if (scoreboardConfig == null) {
             return; // Scoreboard not configured
         }
 
-        Scoreboard scoreboard = player.getScoreboard();
+        Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
+        Objective objective = scoreboard.getObjective("annihilation");
 
-        // If a new scoreboard is needed, back up existing team info
-        Map<String, Set<String>> teamsBackup = null;
-        if (scoreboard == null || scoreboard.getObjective("annihilation") == null) {
-            if (scoreboard != null) {
-                teamsBackup = new HashMap<>();
-                for (Team team : scoreboard.getTeams()) {
-                    teamsBackup.put(team.getName(), new HashSet<>(team.getEntries()));
-                }
-            }
-            scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
+        // Unregister old objective to clear lines cleanly without affecting other
+        // objectives (like deaths)
+        if (objective != null) {
+            objective.unregister();
         }
 
-        Objective objective = scoreboard.getObjective("annihilation");
         String title = ChatColor.translateAlternateColorCodes('&',
                 scoreboardConfig.getString("title", "&e&lAnnihilation"));
-        if (objective == null) {
-            objective = scoreboard.registerNewObjective("annihilation", "dummy", title);
-            objective.setDisplaySlot(DisplaySlot.SIDEBAR);
-        } else {
-            objective.setDisplayName(title);
-        }
-
-        // Restore teams from backup if a new scoreboard was created
-        if (teamsBackup != null) {
-            for (Map.Entry<String, Set<String>> entry : teamsBackup.entrySet()) {
-                String teamName = entry.getKey();
-                Set<String> members = entry.getValue();
-                Team newTeam = scoreboard.registerNewTeam(teamName);
-                configureTeam(newTeam, teamName); // This applies prefix, friendly fire settings, etc.
-                for (String member : members) {
-                    newTeam.addEntry(member);
-                }
-            }
-        }
-
-        // Clear old scores to prevent duplicates
-        for (String entry : scoreboard.getEntries()) {
-            scoreboard.resetScores(entry);
-        }
+        objective = scoreboard.registerNewObjective("annihilation", "dummy", title);
+        objective.setDisplaySlot(DisplaySlot.SIDEBAR);
 
         List<String> lines = scoreboardConfig.getStringList("lines");
         int score = lines.size();
@@ -126,10 +141,13 @@ public class ScoreboardManager {
                 objective.getScore(line).setScore(score--);
             }
         }
-        player.setScoreboard(scoreboard);
     }
 
     public void updateForAllPlayers() {
+        // Update the sidebar content on the main scoreboard once
+        updateSidebar();
+
+        // Ensure all players are viewing the main scoreboard (if visibility is on)
         for (Player player : Bukkit.getOnlinePlayers()) {
             updateScoreboard(player);
         }

@@ -27,6 +27,24 @@ nexus-health: 75
 xp-message: '&a+12 Shrektbow XP'
 nexus-destruction-delay: 1
 nexus-hit-delay: 1
+nexus-destroyed-message: "&5The %team% nexus has been destroyed!"
+
+xp-rewards:
+  nexus-damage: 1
+  player-kill: 3
+  defense-bonus: 6
+  offense-bonus: 6
+  avenger-bonus: 6
+  mobs:
+    ZOMBIE: 1
+    SKELETON: 1
+    SPIDER: 1
+    CREEPER: 2
+    ENDERMAN: 5
+  bosses:
+    WARDEN: 100
+    WITHER: 100
+    ENDER_DRAGON: 200
 
 # Grapple Ability Settings
 grapple:

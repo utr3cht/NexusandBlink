@@ -19,7 +19,6 @@ commands:
   anni:
     description: Admin commands for Annihilation.
     usage: /anni [start|stop|reload]
-    usage: /anni [start|stop|reload]
     default: op
   togglescoreboard:
     description: Toggle scoreboard visibility.
@@ -32,6 +31,12 @@ commands:
   chat:
     description: Manage chat translation settings
     usage: /chat <lang|on|off> [args]
+  myxp:
+    description: Check your current XP balance.
+    usage: /myxp
+  sbrank:
+    description: Open GUI to change display rank prefix
+    usage: /sbrank
 
 permissions:
   annihilation.admin:

@@ -62,24 +62,38 @@ public class ScorpioAbility {
                     return;
                 }
 
-                // Player collision check
-                for (Entity entity : hook.getNearbyEntities(0.5, 0.5, 0.5)) {
-                    if (entity instanceof Player && !entity.equals(player)) {
-                        Player hitPlayer = (Player) entity;
-                        if (isRightClick) { // Right-click pulls enemy to you
-                            if (!isFriendly(hitPlayer)) {
-                                pullEnemy(hitPlayer);
-                                hook.remove();
-                                this.cancel();
-                                return;
+                // Player and Mob collision check
+                for (Entity entity : hook.getNearbyEntities(1.0, 1.0, 1.0)) {
+                    if (entity instanceof org.bukkit.entity.LivingEntity && !entity.equals(player)) {
+                        org.bukkit.entity.LivingEntity hitEntity = (org.bukkit.entity.LivingEntity) entity;
+
+                        if (hitEntity instanceof Player) {
+                            Player hitPlayer = (Player) hitEntity;
+                            if (isRightClick) { // Right-click pulls enemy to you
+                                if (!isFriendly(hitPlayer)) {
+                                    pullEntity(hitPlayer);
+                                    hook.remove();
+                                    this.cancel();
+                                    return;
+                                }
+                            } else { // Left-click pulls you to any hit player
+                                if (isFriendly(hitPlayer)) {
+                                    pullToTarget(hitPlayer);
+                                    hook.remove();
+                                    this.cancel();
+                                    return;
+                                }
                             }
-                        } else { // Left-click pulls you to any hit player
-                            if (isFriendly(hitPlayer)) {
-                                pullToTarget(hitPlayer);
-                                hook.remove();
-                                this.cancel();
-                                return;
+                        } else {
+                            // It's a mob
+                            if (isRightClick) {
+                                pullEntity(hitEntity); // Pull mob to player
+                            } else {
+                                pullToTarget(hitEntity); // Pull player to mob
                             }
+                            hook.remove();
+                            this.cancel();
+                            return;
                         }
                     }
                 }
@@ -106,14 +120,43 @@ public class ScorpioAbility {
                             // Continuous pulling logic
                             for (Entity entity : hook.getNearbyEntities(1.5, 1.5, 1.5)) { // Check a slightly larger
                                                                                           // radius
-                                if (entity instanceof Player && !entity.equals(player)) {
-                                    Player affectedPlayer = (Player) entity;
-                                    if (isRightClick) { // Right-click pulls enemy to hook
-                                        if (!isFriendly(affectedPlayer)) {
-                                            pullEnemyToHook(affectedPlayer, hook.getLocation());
+                                if (entity instanceof org.bukkit.entity.LivingEntity && !entity.equals(player)) {
+                                    org.bukkit.entity.LivingEntity affectedEntity = (org.bukkit.entity.LivingEntity) entity;
+
+                                    if (affectedEntity instanceof Player) {
+                                        Player affectedPlayer = (Player) affectedEntity;
+                                        if (isRightClick) { // Right-click pulls enemy to hook
+                                            if (!isFriendly(affectedPlayer)) {
+                                                pullEntityToHook(affectedPlayer, hook.getLocation());
+                                                // Remove hook after successful pull
+                                                hook.remove();
+                                                currentHook = null;
+                                                isStuck = false;
+                                                this.cancel();
+                                                return;
+                                            }
+                                        } else { // Left-click pulls player to hook
+                                            pullPlayerToHook(player, hook.getLocation());
+                                            // Remove hook after successful pull
+                                            hook.remove();
+                                            currentHook = null;
+                                            isStuck = false;
+                                            this.cancel();
+                                            return;
                                         }
-                                    } else { // Left-click pulls player to hook
-                                        pullPlayerToHook(player, hook.getLocation());
+                                    } else {
+                                        // Mob logic
+                                        if (isRightClick) {
+                                            pullEntityToHook(affectedEntity, hook.getLocation());
+                                        } else {
+                                            pullPlayerToHook(player, hook.getLocation());
+                                        }
+                                        // Remove hook after successful pull
+                                        hook.remove();
+                                        currentHook = null;
+                                        isStuck = false;
+                                        this.cancel();
+                                        return;
                                     }
                                 }
                             }
@@ -131,26 +174,26 @@ public class ScorpioAbility {
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
-    public void pullEnemy(Player enemy) {
+    public void pullEntity(org.bukkit.entity.LivingEntity entity) {
         Location pullLocation = player.getLocation();
         if (!isSafeLocation(pullLocation)) {
-            player.sendMessage("Not enough space to pull the enemy.");
+            player.sendMessage("Not enough space to pull the target.");
             return;
         }
 
-        enemy.teleport(pullLocation.add(0, 1.5, 0));
-        enemy.setFallDistance(0);
+        entity.teleport(pullLocation.add(0, 1.5, 0));
+        entity.setFallDistance(0);
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1, 1);
 
         new BukkitRunnable() {
             @Override
             public void run() {
-                enemy.setFallDistance(0);
+                entity.setFallDistance(0);
             }
         }.runTaskLater(plugin, 20L * plugin.getScorpioEnemyPullFallImmunity());
     }
 
-    public void pullToTarget(Player target) {
+    public void pullToTarget(org.bukkit.entity.LivingEntity target) {
         if (isHalfBlockInFront()) {
             return;
         }
@@ -202,22 +245,22 @@ public class ScorpioAbility {
         return false;
     }
 
-    // New helper method to pull an enemy towards the hook's location
-    private void pullEnemyToHook(Player enemy, Location hookLocation) {
+    // New helper method to pull an entity towards the hook's location
+    private void pullEntityToHook(org.bukkit.entity.LivingEntity entity, Location hookLocation) {
         Location pullLocation = hookLocation.clone();
         if (!isSafeLocation(pullLocation)) {
             // Optionally send a message or log if not enough space
             return;
         }
 
-        enemy.teleport(pullLocation.add(0, 1.5, 0));
-        enemy.setFallDistance(0);
+        entity.teleport(pullLocation.add(0, 1.5, 0));
+        entity.setFallDistance(0);
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1, 1);
 
         new BukkitRunnable() {
             @Override
             public void run() {
-                enemy.setFallDistance(0);
+                entity.setFallDistance(0);
             }
         }.runTaskLater(plugin, 20L * plugin.getScorpioEnemyPullFallImmunity());
     }

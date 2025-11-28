@@ -16,16 +16,21 @@ public class PlayerChatListener implements Listener {
     private final ScoreboardManager scoreboardManager;
     private final PlayerDataManager playerDataManager;
     private final TranslationService translationService;
+    private final RankManager rankManager;
     private final JavaPlugin plugin;
+    private final PlayerClassManager playerClassManager;
 
     public PlayerChatListener(JavaPlugin plugin, PlayerTeamManager playerTeamManager,
             ScoreboardManager scoreboardManager,
-            PlayerDataManager playerDataManager, TranslationService translationService) {
+            PlayerDataManager playerDataManager, TranslationService translationService, RankManager rankManager,
+            PlayerClassManager playerClassManager) {
         this.plugin = plugin;
         this.playerTeamManager = playerTeamManager;
         this.scoreboardManager = scoreboardManager;
         this.playerDataManager = playerDataManager;
         this.translationService = translationService;
+        this.rankManager = rankManager;
+        this.playerClassManager = playerClassManager;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -67,44 +72,71 @@ public class PlayerChatListener implements Listener {
         }
 
         // Global Chat Prefix
+        event.setCancelled(true); // Always cancel to handle formatting and translation
+
+        ChatColor teamColor = ChatColor.WHITE;
+        String teamPrefix = "";
+
         if (teamName != null && !teamName.isEmpty()) {
-            event.setCancelled(true); // Cancel the default chat event
-
-            ChatColor teamColor = scoreboardManager.getTeamColor(teamName);
+            teamColor = scoreboardManager.getTeamColor(teamName);
             String teamInitial = teamName.substring(0, 1).toUpperCase();
-            String teamPrefix = ChatColor.RESET + "[" + teamColor + teamInitial + ChatColor.RESET + "] ";
-
-            // Manually construct the player name part with team color
-            String coloredPlayerName = teamColor + player.getName() + ChatColor.RESET;
-
-            // Construct the final message format (without message content yet)
-            String prefix = teamPrefix + coloredPlayerName + " : " + ChatColor.WHITE;
-
-            // Send to all players with translation if needed
-            for (Player recipient : Bukkit.getOnlinePlayers()) {
-                String recipientLang = playerDataManager.getPlayerLanguage(recipient);
-                boolean translationEnabled = playerDataManager.isTranslationEnabled(recipient);
-                String senderLang = playerDataManager.getPlayerLanguage(player);
-
-                if (!translationEnabled || senderLang.equals(recipientLang)) {
-                    // No translation
-                    recipient.sendMessage(prefix + message);
-                } else {
-                    // Translate
-                    translationService.translate(message, recipientLang)
-                            .thenAccept(translatedText -> {
-                                recipient.sendMessage(prefix + message + ChatColor.GOLD + " (" + translatedText + ")");
-                            })
-                            .exceptionally(ex -> {
-                                plugin.getLogger().warning("Translation failed: " + ex.getMessage());
-                                recipient.sendMessage(prefix + message);
-                                return null;
-                            });
-                }
-            }
-
-            // Log to console
-            Bukkit.getConsoleSender().sendMessage(prefix + message);
+            teamPrefix = ChatColor.RESET + "[" + teamColor + teamInitial + ChatColor.RESET + "] ";
         }
+
+        // Rank Prefix
+        Rank rank = rankManager.getDisplayRank(player);
+        String rankPrefix = (rank != null) ? rank.getPrefix() : "";
+
+        // Class Abbreviation
+        String className = playerClassManager.getPlayerClass(player.getUniqueId());
+        String classAbbr = getClassAbbreviation(className);
+
+        // Manually construct the player name part with team color
+        String coloredPlayerName = teamColor + player.getName() + ChatColor.RESET;
+
+        // Construct the final message format (without message content yet)
+        // Format: [Rank] [Team] Name (Class) : Message
+        // Class is colored with Team Color
+        String prefix = rankPrefix + teamPrefix + coloredPlayerName + " " + teamColor + "(" + classAbbr + ")"
+                + ChatColor.RESET + " : " + ChatColor.WHITE;
+
+        // Send to all players with translation if needed
+        for (Player recipient : Bukkit.getOnlinePlayers()) {
+            String recipientLang = playerDataManager.getPlayerLanguage(recipient);
+            boolean translationEnabled = playerDataManager.isTranslationEnabled(recipient);
+            String senderLang = playerDataManager.getPlayerLanguage(player);
+
+            if (!translationEnabled || senderLang.equals(recipientLang)) {
+                // No translation
+                recipient.sendMessage(prefix + message);
+            } else {
+                // Translate
+                translationService.translate(message, recipientLang)
+                        .thenAccept(translatedText -> {
+                            recipient.sendMessage(prefix + message + ChatColor.GOLD + " (" + translatedText + ")");
+                        })
+                        .exceptionally(ex -> {
+                            plugin.getLogger().warning("Translation failed: " + ex.getMessage());
+                            recipient.sendMessage(prefix + message);
+                            return null;
+                        });
+            }
+        }
+
+        // Log to console
+        Bukkit.getConsoleSender().sendMessage(prefix + message);
+    }
+
+    private String getClassAbbreviation(String className) {
+        if (className == null || className.isEmpty()) {
+            return "CIV";
+        }
+        if (className.equalsIgnoreCase("Assassin")) {
+            return "ASN";
+        }
+        if (className.length() <= 3) {
+            return className.toUpperCase();
+        }
+        return className.substring(0, 3).toUpperCase();
     }
 }

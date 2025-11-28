@@ -49,7 +49,59 @@ public class AnniAdminCommand implements CommandExecutor {
                     return true;
                 }
                 plugin.setFriendlyFire(enabled);
-                sender.sendMessage(ChatColor.GREEN + "Friendly fire has been " + (enabled ? "enabled" : "disabled") + ".");
+                sender.sendMessage(
+                        ChatColor.GREEN + "Friendly fire has been " + (enabled ? "enabled" : "disabled") + ".");
+                break;
+
+            case "rank":
+                if (!sender.hasPermission("annihilation.admin")) {
+                    sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+                    return true;
+                }
+                if (args.length < 2) {
+                    sender.sendMessage(ChatColor.RED + "Usage: /anni rank <set|give|remove> <player> [rank]");
+                    return true;
+                }
+                String sub = args[1].toLowerCase();
+                if (sub.equals("set") || sub.equals("give")) {
+                    if (args.length != 4) {
+                        sender.sendMessage(ChatColor.RED + "Usage: /anni rank " + sub + " <player> <rank>");
+                        return true;
+                    }
+                    org.bukkit.entity.Player target = org.bukkit.Bukkit.getPlayer(args[2]);
+                    if (target == null) {
+                        sender.sendMessage(ChatColor.RED + "Player not found.");
+                        return true;
+                    }
+                    String rankName = args[3].toUpperCase();
+                    try {
+                        Rank rank = Rank.valueOf(rankName);
+                        plugin.getRankManager().setRank(target, rank);
+                        plugin.getScoreboardManager().updatePlayerPrefix(target); // Update Tab List immediately
+                        sender.sendMessage(ChatColor.GREEN + "Set rank of " + target.getName() + " to "
+                                + rank.getDisplayName() + ".");
+                        target.sendMessage(
+                                ChatColor.GREEN + "Your rank has been set to " + rank.getDisplayName() + ".");
+                    } catch (IllegalArgumentException e) {
+                        sender.sendMessage(ChatColor.RED
+                                + "Invalid rank. Available ranks: Silver, Gold, Platinum, Emerald, Obsidian, Ruby.");
+                    }
+                } else if (sub.equals("remove")) {
+                    if (args.length != 3) {
+                        sender.sendMessage(ChatColor.RED + "Usage: /anni rank remove <player>");
+                        return true;
+                    }
+                    org.bukkit.entity.Player target = org.bukkit.Bukkit.getPlayer(args[2]);
+                    if (target == null) {
+                        sender.sendMessage(ChatColor.RED + "Player not found.");
+                        return true;
+                    }
+                    plugin.getRankManager().removeRank(target);
+                    sender.sendMessage(ChatColor.GREEN + "Removed rank from " + target.getName() + ".");
+                    target.sendMessage(ChatColor.YELLOW + "Your rank has been removed.");
+                } else {
+                    sender.sendMessage(ChatColor.RED + "Unknown subcommand. Usage: /anni rank <set|give|remove>");
+                }
                 break;
 
             default:
