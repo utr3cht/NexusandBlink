@@ -29,10 +29,6 @@ public class MobDeathListener implements Listener {
             return;
         }
 
-        // Debug logging
-        plugin.getLogger().info("EntityDeathEvent: " + type.name() + ", Killer: " +
-                (killer != null ? killer.getName() : "null"));
-
         // Handle Boss XP (Global)
         int bossXp = plugin.getBossXp(type);
         if (bossXp > 0) {
@@ -45,10 +41,8 @@ public class MobDeathListener implements Listener {
         // Handle Mob XP (Killer only)
         if (killer != null) {
             int mobXp = plugin.getMobXp(type);
-            plugin.getLogger().info("Mob XP for " + type.name() + ": " + mobXp);
             if (mobXp > 0) {
                 xpManager.giveXp(killer, mobXp, "Mob Kill: " + type.name());
-                plugin.getLogger().info("Gave " + mobXp + " XP to " + killer.getName());
             }
         }
     }

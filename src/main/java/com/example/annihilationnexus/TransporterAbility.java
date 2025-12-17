@@ -698,15 +698,41 @@ public class TransporterAbility {
         // Also clear any pending selections if the player changes class mid-selection
 
         if (playerPortalSelections.containsKey(playerUUID)) {
-
-            playerPortalSelections.remove(playerUUID);
-
+            Location incompleteLoc = playerPortalSelections.remove(playerUUID);
+            if (incompleteLoc != null) {
+                forceDestroyPortal(plugin, incompleteLoc.getBlock());
+            }
         }
 
         stopContinuousParticleEffect(playerUUID); // Stop any particle effects
 
         resetPortalMakerItemName(plugin.getServer().getPlayer(playerUUID));
 
+    }
+
+    public void cleanupIncompletePortal(Player player) {
+        UUID playerUUID = player.getUniqueId();
+        if (playerPortalSelections.containsKey(playerUUID)) {
+            Location incompleteLoc = playerPortalSelections.remove(playerUUID);
+            if (incompleteLoc != null) {
+                forceDestroyPortal(plugin, incompleteLoc.getBlock());
+                // Stop particles for this specific location
+                stopContinuousPortalParticleEffect(incompleteLoc, playerUUID);
+            }
+        }
+        // Also cleanup general particle tasks if any remain
+        stopContinuousParticleEffect(playerUUID);
+        resetPortalMakerItemName(player);
+    }
+
+    public void restoreParticleEffects(Player player) {
+        UUID playerUUID = player.getUniqueId();
+        if (activePortals.containsKey(playerUUID)) {
+            Map<Location, Location> portals = activePortals.get(playerUUID);
+            for (Location loc : portals.keySet()) {
+                startContinuousPortalParticleEffect(loc, Particle.CLOUD, playerUUID);
+            }
+        }
     }
 
     public void resetPortalMakerItemName(Player player) {

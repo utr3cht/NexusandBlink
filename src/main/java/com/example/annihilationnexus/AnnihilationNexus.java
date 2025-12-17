@@ -41,6 +41,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
     private TeamColorManager teamColorManager; // Add field
     private RankManager rankManager; // Add RankManager field
     private XpManager xpManager; // Add XpManager field
+    private ClanManager clanManager; // Add ClanManager field
     private NamespacedKey classKey;
     private final Set<UUID> noFall = ConcurrentHashMap.newKeySet();
     private final Map<UUID, BukkitTask> noFallTasks = new ConcurrentHashMap<>();
@@ -112,6 +113,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         this.classRegionManager.loadRegions();
         this.scoreboardManager.loadScoreboardVisibility();
         this.playerTeamManager.loadTeams();
+        this.scoreboardManager.initializeTeams(); // Initialize teams on scoreboard
 
         // Delay crop loading by 20 ticks (1 second) to ensure worlds are loaded
         new BukkitRunnable() {
@@ -122,6 +124,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         }.runTaskLater(this, 20L);
 
         // Registering events and commands
+        // Register Events
         getServer().getPluginManager().registerEvents(new NexusListener(this, nexusManager, xpManager), this);
         getServer().getPluginManager().registerEvents(
                 new PlayerLifecycleListener(this, scoreboardManager, playerClassManager, playerTeamManager), this);
@@ -136,7 +139,8 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new SpyListener(this, playerClassManager), this);
         getServer().getPluginManager().registerEvents(new TransporterListener(this), this);
         getServer().getPluginManager().registerEvents(new ClassItemListener(this), this);
-        getServer().getPluginManager().registerEvents(new ClassSelectionListener(this, playerClassManager), this);
+        getServer().getPluginManager().registerEvents(new ClassSelectionListener(this, playerClassManager, xpManager),
+                this);
         getServer().getPluginManager().registerEvents(new com.example.annihilationnexus.gui.SbRankGUI(this), this);
         getServer().getPluginManager().registerEvents(new ClassItemRestrictionListener(this), this);
         getServer().getPluginManager()
@@ -145,14 +149,27 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
                 new DeathMessageListener(playerClassManager, playerTeamManager, scoreboardManager, xpManager,
                         nexusManager),
                 this);
+        getServer().getPluginManager().registerEvents(new MobDeathListener(this, xpManager), this);
+        getServer().getPluginManager().registerEvents(new RiftWalkerListener(this, playerClassManager), this);
+        getServer().getPluginManager().registerEvents(new ConsumableListener(this), this);
+        getServer().getPluginManager().registerEvents(new PistonListener(this), this);
+
+        this.clanManager = new ClanManager(this);
+        com.example.annihilationnexus.commands.ClanCommand clanCommand = new com.example.annihilationnexus.commands.ClanCommand(
+                clanManager, xpManager);
+        this.getCommand("clan").setExecutor(clanCommand);
+        this.getCommand("clan").setTabCompleter(clanCommand);
+
         getServer().getPluginManager().registerEvents(
                 new PlayerChatListener(this, playerTeamManager, scoreboardManager, playerDataManager,
-                        translationService, rankManager, playerClassManager),
+                        translationService, rankManager, playerClassManager, clanManager),
                 this);
-        getServer().getPluginManager().registerEvents(new MobDeathListener(this, xpManager), this);
 
         this.getCommand("chat").setExecutor(new com.example.annihilationnexus.commands.ChatCommand(playerDataManager));
         this.getCommand("class").setExecutor(new ClassCommand(this, playerClassManager));
+        getCommand("ranking").setExecutor(new com.example.annihilationnexus.commands.RankingCommand(this));
+        getCommand("team").setExecutor(
+                new TeamCommand(this, nexusManager, scoreboardManager, playerTeamManager, teamColorManager));
         this.getCommand("class").setTabCompleter(new ClassTabCompleter(this));
         this.getCommand("nexus").setExecutor(new NexusAdminCommand(this, nexusManager));
         this.getCommand("nexus").setTabCompleter(new NexusAdminTabCompleter(nexusManager));
@@ -167,6 +184,9 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
                 teamColorManager);
         this.getCommand("team").setExecutor(teamCommand);
         this.getCommand("team").setTabCompleter(teamCommand);
+        this.getCommand("rank")
+                .setExecutor(new com.example.annihilationnexus.commands.RankCommand(this, rankManager, xpManager));
+
         // Assassin cooldown display task
         new BukkitRunnable() {
             @Override
@@ -215,6 +235,14 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
             }
         }.runTaskTimer(this, 0L, 20L);
 
+        // Register Recipe
+        NamespacedKey key = new NamespacedKey(this, "enchanted_golden_apple");
+        org.bukkit.inventory.ShapedRecipe recipe = new org.bukkit.inventory.ShapedRecipe(key,
+                new ItemStack(Material.ENCHANTED_GOLDEN_APPLE));
+        recipe.shape("GGG", "GAG", "GGG");
+        recipe.setIngredient('G', Material.GOLD_BLOCK);
+        recipe.setIngredient('A', Material.APPLE);
+        getServer().addRecipe(recipe);
     }
 
     @Override
@@ -227,11 +255,14 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         this.protectedCropManager.saveCrops();
         this.playerTeamManager.saveTeams();
         this.teamColorManager.saveColors(); // Save colors
+        if (clanManager != null) {
+            clanManager.saveClans();
+        }
         saveAchievedNetheriteHoeBreak(); // Save achievement data
     }
 
     public boolean isRemoveTransporterPortalOnLogout() {
-        return getConfig().getBoolean("transporter.remove-on-logout", true);
+        return getConfig().getBoolean("transporter.remove-on-logout", false);
     }
 
     @Override
@@ -240,7 +271,7 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         // Add custom defaults for configurable crop drops if they don't exist
         FileConfiguration config = getConfig();
         if (!config.contains("transporter.remove-on-logout")) {
-            config.set("transporter.remove-on-logout", true);
+            config.set("transporter.remove-on-logout", false);
             saveConfig();
         }
         if (!config.contains("farmer.extra-drops.crops.custom-drops")) {
@@ -616,10 +647,52 @@ public final class AnnihilationNexus extends JavaPlugin implements Listener {
         return noFall;
     }
 
+    private NamespacedKey riftWalkerKey;
+
+    public ItemStack getRiftWalkerItem() {
+        ItemStack item = new ItemStack(Material.BLAZE_ROD);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Rift Walker");
+            // Set persistent data tag
+            if (riftWalkerKey == null) {
+                riftWalkerKey = new NamespacedKey(this, "riftwalker_item");
+            }
+            meta.getPersistentDataContainer().set(riftWalkerKey, org.bukkit.persistence.PersistentDataType.BYTE,
+                    (byte) 1);
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    public boolean isRiftWalkerItem(ItemStack item) {
+        if (item == null || item.getType() != Material.BLAZE_ROD) {
+            return false;
+        }
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null)
+            return false;
+
+        if (riftWalkerKey == null) {
+            riftWalkerKey = new NamespacedKey(this, "riftwalker_item");
+        }
+
+        // Check for the tag
+        if (meta.getPersistentDataContainer().has(riftWalkerKey, org.bukkit.persistence.PersistentDataType.BYTE)) {
+            return true;
+        }
+
+        // Fallback for legacy items (or if tag is missing for some reason)
+        // This ensures items created before the tag update are still recognized and
+        // removed on death
+        return meta.hasDisplayName() && meta.getDisplayName().startsWith(ChatColor.LIGHT_PURPLE + "Rift Walker");
+    }
+
     // Helper method to check if an item is any class item
     public boolean isClassItem(ItemStack item) {
         return isBlinkItem(item) || isGrappleItem(item) || isScorpioItem(item) || isAssassinItem(item)
-                || isSpyItem(item) || isTransporterItem(item) || isFeastItem(item) || isFamineItem(item);
+                || isSpyItem(item) || isTransporterItem(item) || isFeastItem(item) || isFamineItem(item)
+                || isRiftWalkerItem(item);
     }
 
     public double getTpDistanceLimit() {

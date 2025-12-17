@@ -44,12 +44,47 @@ public class ClassCommand implements CommandExecutor {
         if (args.length == 0) {
             // Check if player is in a class region
             if (!plugin.getClassRegionManager().isLocationInRestrictedRegion(player.getLocation())) {
-                player.sendMessage(ChatColor.RED + "You can only use the /class command within a designated class region.");
+                player.sendMessage(
+                        ChatColor.RED + "You can only use the /class command within a designated class region.");
                 return true;
             }
 
             ClassSelectionGUI gui = new ClassSelectionGUI(plugin, playerClassManager);
             gui.openGUI(player);
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("ban")) {
+            if (!player.hasPermission("annihilation.admin")) {
+                player.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+                return true;
+            }
+            if (args.length != 2) {
+                player.sendMessage(ChatColor.RED + "Usage: /class ban <classname>");
+                return true;
+            }
+            String className = args[1].toLowerCase();
+            if (!playerClassManager.getAllClassNames().contains(className)) {
+                player.sendMessage(ChatColor.RED + "Invalid class name.");
+                return true;
+            }
+            playerClassManager.banClass(className);
+            player.sendMessage(ChatColor.GREEN + "Class " + className + " has been banned.");
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("unban")) {
+            if (!player.hasPermission("annihilation.admin")) {
+                player.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+                return true;
+            }
+            if (args.length != 2) {
+                player.sendMessage(ChatColor.RED + "Usage: /class unban <classname>");
+                return true;
+            }
+            String className = args[1].toLowerCase();
+            playerClassManager.unbanClass(className);
+            player.sendMessage(ChatColor.GREEN + "Class " + className + " has been unbanned.");
             return true;
         }
 
@@ -59,26 +94,29 @@ public class ClassCommand implements CommandExecutor {
             return true;
         }
 
-        if (args.length != 2) {
-            sender.sendMessage(ChatColor.RED + "Usage: /class <player> <class>");
-            return false;
+        // Check if setting class for another player
+        if (args.length == 2) {
+            Player target = Bukkit.getPlayer(args[0]);
+            if (target == null) {
+                sender.sendMessage(ChatColor.RED + "Player not found.");
+                return false;
+            }
+
+            String className = args[1];
+            // Updated to include transporteractive
+            // Updated to include transporteractive
+            if (!playerClassManager.getAllClassNames().contains(className.toLowerCase())) {
+                sender.sendMessage(ChatColor.RED + "Class not found.");
+                return false;
+            }
+
+            playerClassManager.setPlayerClass(target.getUniqueId(), className.toLowerCase());
+            sender.sendMessage(ChatColor.GREEN + "Set class for " + target.getName() + " to " + className);
+            return true;
         }
 
-        Player target = Bukkit.getPlayer(args[0]);
-        if (target == null) {
-            sender.sendMessage(ChatColor.RED + "Player not found.");
-            return false;
-        }
-
-        String className = args[1];
-        // Updated to include transporteractive
-        if (!className.equalsIgnoreCase("dasher") && !className.equalsIgnoreCase("scout") && !className.equalsIgnoreCase("scorpio") && !className.equalsIgnoreCase("assassin") && !className.equalsIgnoreCase("spy") && !className.equalsIgnoreCase("transporter") && !className.equalsIgnoreCase("farmer")) {
-            sender.sendMessage(ChatColor.RED + "Class not found.");
-            return false;
-        }
-
-        playerClassManager.setPlayerClass(target.getUniqueId(), className.toLowerCase());
-        sender.sendMessage(ChatColor.GREEN + "Set class for " + target.getName() + " to " + className);
+        sender.sendMessage(
+                ChatColor.RED + "Usage: /class <player> <class> OR /class ban <class> OR /class unban <class>");
         return true;
     }
 
@@ -92,7 +130,8 @@ public class ClassCommand implements CommandExecutor {
 
         for (int i = 0; i < player.getInventory().getSize(); i++) {
             ItemStack item = player.getInventory().getItem(i);
-            if (item == null) continue;
+            if (item == null)
+                continue;
 
             if (className.equalsIgnoreCase("farmer")) {
                 if (plugin.isFeastItem(item)) {
@@ -122,6 +161,9 @@ public class ClassCommand implements CommandExecutor {
                 } else if (className.equalsIgnoreCase("transporter") && plugin.isTransporterItem(item)) {
                     player.getInventory().setItem(i, null);
                     removedOther = true;
+                } else if (className.equalsIgnoreCase("riftwalker") && plugin.isRiftWalkerItem(item)) {
+                    player.getInventory().setItem(i, null);
+                    removedOther = true;
                 }
             }
         }
@@ -141,12 +183,20 @@ public class ClassCommand implements CommandExecutor {
                 player.getInventory().addItem(plugin.getFamineItem());
             } else {
                 ItemStack classItem = null;
-                if (className.equalsIgnoreCase("dasher")) classItem = plugin.getBlinkItem();
-                else if (className.equalsIgnoreCase("scout")) classItem = plugin.getGrappleItem();
-                else if (className.equalsIgnoreCase("scorpio")) classItem = plugin.getScorpioItem();
-                else if (className.equalsIgnoreCase("assassin")) classItem = plugin.getAssassinItem();
-                else if (className.equalsIgnoreCase("spy")) classItem = plugin.getSpyItem();
-                else if (className.equalsIgnoreCase("transporter")) classItem = plugin.getTransporterItem();
+                if (className.equalsIgnoreCase("dasher"))
+                    classItem = plugin.getBlinkItem();
+                else if (className.equalsIgnoreCase("scout"))
+                    classItem = plugin.getGrappleItem();
+                else if (className.equalsIgnoreCase("scorpio"))
+                    classItem = plugin.getScorpioItem();
+                else if (className.equalsIgnoreCase("assassin"))
+                    classItem = plugin.getAssassinItem();
+                else if (className.equalsIgnoreCase("spy"))
+                    classItem = plugin.getSpyItem();
+                else if (className.equalsIgnoreCase("transporter"))
+                    classItem = plugin.getTransporterItem();
+                else if (className.equalsIgnoreCase("riftwalker"))
+                    classItem = plugin.getRiftWalkerItem();
 
                 if (classItem != null) {
                     player.getInventory().addItem(classItem);

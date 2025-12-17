@@ -34,6 +34,10 @@ public class TransporterListener implements Listener {
 
         if (plugin.isTransporterItem(player.getInventory().getItemInMainHand())) {
             if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+                if (event.getBlockFace() != org.bukkit.block.BlockFace.UP) {
+                    player.sendMessage(ChatColor.RED + "Portals can only be placed on the top of blocks.");
+                    return;
+                }
                 Block clicked = event.getClickedBlock();
                 if (clicked != null) {
                     ability.handlePortalCreation(player, clicked);

@@ -26,12 +26,50 @@ public class ClassItemRestrictionListener implements Listener {
         boolean isClassItemInvolved = (clickedItem != null && plugin.isClassItem(clickedItem)) ||
                 (cursorItem != null && plugin.isClassItem(cursorItem));
 
+        // Bundle Restriction
+        if (isClassItemInvolved) {
+            boolean isBundleInvolved = (clickedItem != null && clickedItem.getType() == org.bukkit.Material.BUNDLE) ||
+                    (cursorItem != null && cursorItem.getType() == org.bukkit.Material.BUNDLE);
+
+            // Also check for right-click on bundle with item, or right-click item on bundle
+            if (isBundleInvolved) {
+                event.setCancelled(true);
+                if (event.getWhoClicked() instanceof org.bukkit.entity.Player) {
+                    ((org.bukkit.entity.Player) event.getWhoClicked())
+                            .sendMessage(org.bukkit.ChatColor.RED + "You cannot put class items in bundles!");
+                }
+                return;
+            }
+        }
+
+        // Also check for hotbar swap (number keys)
+        if (event.getClick() == org.bukkit.event.inventory.ClickType.NUMBER_KEY) {
+            ItemStack hotbarItem = event.getWhoClicked().getInventory().getItem(event.getHotbarButton());
+            if (hotbarItem != null && plugin.isClassItem(hotbarItem)) {
+                isClassItemInvolved = true;
+            }
+        }
+
         if (!isClassItemInvolved) {
             return;
         }
 
+        // Check if any GUI other than the player's inventory is open
+        InventoryType topType = event.getView().getTopInventory().getType();
+        if (topType != InventoryType.CRAFTING && topType != InventoryType.CREATIVE) {
+            // A GUI is open (Chest, Furnace, Anvil, etc.)
+            // Prevent ANY interaction with class items
+            event.setCancelled(true);
+            if (event.getWhoClicked() instanceof org.bukkit.entity.Player) {
+                ((org.bukkit.entity.Player) event.getWhoClicked())
+                        .sendMessage(org.bukkit.ChatColor.RED + "You cannot move class items while a GUI is open!");
+            }
+            return;
+        }
+
         // If a class item is involved, prevent it from being moved into non-player
-        // inventories
+        // inventories (This part might be redundant now if we block all GUIs, but good
+        // for safety)
         if (event.getClickedInventory() != null && !(event.getClickedInventory() instanceof PlayerInventory)) {
             // This handles clicks inside the non-player inventory
             event.setCancelled(true);
@@ -50,6 +88,17 @@ public class ClassItemRestrictionListener implements Listener {
     public void onInventoryDrag(InventoryDragEvent event) {
         // If the dragged item is a class item
         if (plugin.isClassItem(event.getOldCursor())) {
+            // Check if any GUI other than the player's inventory is open
+            InventoryType topType = event.getView().getTopInventory().getType();
+            if (topType != InventoryType.CRAFTING && topType != InventoryType.CREATIVE) {
+                event.setCancelled(true);
+                if (event.getWhoClicked() instanceof org.bukkit.entity.Player) {
+                    ((org.bukkit.entity.Player) event.getWhoClicked())
+                            .sendMessage(org.bukkit.ChatColor.RED + "You cannot move class items while a GUI is open!");
+                }
+                return;
+            }
+
             // Check if any of the affected slots are outside the player's inventory
             for (int slot : event.getRawSlots()) {
                 // Raw slots are unique integers for each slot in the combined inventory view.

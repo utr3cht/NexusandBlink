@@ -23,74 +23,53 @@ public class ClassSelectionGUI {
     public void openGUI(Player player) {
         Inventory gui = Bukkit.createInventory(null, 9, ChatColor.BLUE + "Select Your Class");
 
-        // Dasher
-        ItemStack dasher = plugin.getBlinkItem();
-        ItemMeta dasherMeta = dasher.getItemMeta();
-        if (dasherMeta != null) {
-            dasherMeta.setDisplayName(ChatColor.LIGHT_PURPLE + "Dasher"); // Explicitly set display name for GUI
-            dasherMeta.setLore(Arrays.asList(ChatColor.GRAY + "Fast and agile."));
-            dasher.setItemMeta(dasherMeta);
-        }
-        gui.setItem(0, dasher);
+        addClassItem(gui, 0, "Dasher", plugin.getBlinkItem(), player, "Fast and agile.");
+        addClassItem(gui, 1, "Scout", plugin.getGrappleItem(), player, "Ranged combat specialist.");
+        addClassItem(gui, 2, "Scorpio", plugin.getScorpioItem(), player, "Melee combatant with a hook.");
+        addClassItem(gui, 3, "Assassin", plugin.getAssassinItem(), player, "Stealthy and deadly.");
+        addClassItem(gui, 4, "Spy", plugin.getSpyItem(), player, "Infiltrator and information gatherer.");
+        addClassItem(gui, 5, "Transporter", plugin.getTransporterItem(), player, "Creates teleportation portals.");
 
-        // Scout
-        ItemStack scout = plugin.getGrappleItem();
-        ItemMeta scoutMeta = scout.getItemMeta();
-        if (scoutMeta != null) { // Add null check for ItemMeta
-            scoutMeta.setDisplayName("§aScout"); // Explicitly set display name for GUI
-            scoutMeta.setLore(Arrays.asList(ChatColor.GRAY + "Ranged combat specialist."));
-            scout.setItemMeta(scoutMeta);
-        }
-        gui.setItem(1, scout);
-
-        // Scorpio
-        ItemStack scorpio = plugin.getScorpioItem();
-        ItemMeta scorpioMeta = scorpio.getItemMeta();
-        if (scorpioMeta != null) {
-            scorpioMeta.setDisplayName(ChatColor.GOLD + "Scorpio"); // Explicitly set display name for GUI
-            scorpioMeta.setLore(Arrays.asList(ChatColor.GRAY + "Melee combatant with a hook."));
-            scorpio.setItemMeta(scorpioMeta);
-        }
-        gui.setItem(2, scorpio);
-
-        // Assassin
-        ItemStack assassin = plugin.getAssassinItem();
-        ItemMeta assassinMeta = assassin.getItemMeta();
-        if (assassinMeta != null) {
-            assassinMeta.setDisplayName(ChatColor.GRAY + "Assassin"); // Explicitly set display name for GUI
-            assassinMeta.setLore(Arrays.asList(ChatColor.GRAY + "Stealthy and deadly."));
-            assassin.setItemMeta(assassinMeta);
-        }
-        gui.setItem(3, assassin);
-
-        // Spy
-        ItemStack spy = plugin.getSpyItem();
-        ItemMeta spyMeta = spy.getItemMeta();
-        if (spyMeta != null) {
-            spyMeta.setDisplayName(ChatColor.AQUA + "Spy"); // Explicitly set display name for GUI
-            spyMeta.setLore(Arrays.asList(ChatColor.GRAY + "Infiltrator and information gatherer."));
-            spy.setItemMeta(spyMeta);
-        }
-        gui.setItem(4, spy);
-
-        // Transporter
-        ItemStack transporter = plugin.getTransporterItem();
-        ItemMeta transporterMeta = transporter.getItemMeta();
-        transporterMeta.setLore(Arrays.asList(ChatColor.GRAY + "Creates teleportation portals."));
-        transporter.setItemMeta(transporterMeta);
-        gui.setItem(5, transporter);
-
-        // Farmer
         ItemStack farmer = new ItemStack(Material.WHEAT);
-        ItemMeta farmerMeta = farmer.getItemMeta();
-        if (farmerMeta != null) {
-            farmerMeta.setDisplayName(ChatColor.YELLOW + "Farmer");
-            farmerMeta.setLore(Arrays.asList(ChatColor.GRAY + "Sustains the team with food and resources."));
-            farmer.setItemMeta(farmerMeta);
-        }
-        gui.setItem(6, farmer);
+        addClassItem(gui, 6, "Farmer", farmer, player, "Sustains the team with food and resources.");
+        addClassItem(gui, 7, "RiftWalker", plugin.getRiftWalkerItem(), player, "Teleports teammates to a target.");
 
+        ItemStack civilian = new ItemStack(Material.CRAFTING_TABLE);
+        addClassItem(gui, 8, "Civilian", civilian, player, "A regular civilian with no special abilities.");
 
         player.openInventory(gui);
+    }
+
+    private void addClassItem(Inventory gui, int slot, String className, ItemStack item, Player player,
+            String description) {
+        if (playerClassManager.isClassBanned(className)) {
+            return;
+        }
+
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null)
+            return;
+
+        meta.setDisplayName(ChatColor.GOLD + className);
+
+        java.util.List<String> lore = new java.util.ArrayList<>();
+        lore.add(ChatColor.GRAY + description);
+        lore.add("");
+
+        boolean unlocked = playerClassManager.isClassUnlocked(player.getUniqueId(), className);
+        int cost = playerClassManager.getClassCost(className);
+
+        if (unlocked) {
+            lore.add(ChatColor.GREEN + "UNLOCKED");
+            lore.add(ChatColor.YELLOW + "Click to select.");
+        } else {
+            lore.add(ChatColor.RED + "LOCKED");
+            lore.add(ChatColor.GOLD + "Cost: " + cost + " XP");
+            lore.add(ChatColor.YELLOW + "Click to purchase.");
+        }
+
+        meta.setLore(lore);
+        item.setItemMeta(meta);
+        gui.setItem(slot, item);
     }
 }

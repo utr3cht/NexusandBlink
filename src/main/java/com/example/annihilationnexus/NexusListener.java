@@ -111,15 +111,28 @@ public class NexusListener implements Listener {
                 world.spawnParticle(Particle.LAVA, blockLocation.clone().add(0.5, 0.5, 0.5), 10, 0.2, 0.2, 0.2, 0.05);
             }
 
-            // Send messages
+            // Send messages and give XP to the whole team
             // player.sendMessage(plugin.getXpMessage()); // Removed hardcoded message
             int xpAmount = plugin.getNexusDamageXp();
             if (xpAmount > 0) {
-                xpManager.giveXp(player, xpAmount, "Nexus Damage");
+                String damagerTeam = plugin.getPlayerTeamManager().getPlayerTeam(player.getUniqueId());
+                if (damagerTeam != null) {
+                    for (Player onlinePlayer : plugin.getServer().getOnlinePlayers()) {
+                        String onlinePlayerTeam = plugin.getPlayerTeamManager()
+                                .getPlayerTeam(onlinePlayer.getUniqueId());
+                        if (damagerTeam.equalsIgnoreCase(onlinePlayerTeam)) {
+                            xpManager.giveXp(onlinePlayer, xpAmount, "Nexus Damage");
+                        }
+                    }
+                } else {
+                    // Fallback if player has no team (shouldn't happen in normal gameplay but good
+                    // for safety)
+                    xpManager.giveXp(player, xpAmount, "Nexus Damage");
+                }
             }
 
             // Update scoreboard
-            plugin.getScoreboardManager().updateForAllPlayers();
+            plugin.getScoreboardManager().requestUpdate();
 
             if (nexus.isDestroyed()) {
                 String destroyMessage = plugin.getNexusDestroyedMessage().replace("%team%", nexus.getTeamName());
@@ -135,7 +148,7 @@ public class NexusListener implements Listener {
                                 0.1);
                         blockLocation.getBlock().setType(Material.BEDROCK);
                         // Update scoreboard one last time after destruction effects
-                        plugin.getScoreboardManager().updateForAllPlayers();
+                        plugin.getScoreboardManager().requestUpdate();
                     }, plugin.getNexusDestructionDelay());
                 }
                 // Here you would add logic to handle the team\'s loss.

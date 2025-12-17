@@ -1,9 +1,10 @@
 package com.example.annihilationnexus;
 
 import org.bukkit.Location;
-import org.bukkit.Material;
+
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
+
 import org.bukkit.entity.FishHook;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -14,7 +15,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class GrappleAbility {
 
@@ -45,7 +45,8 @@ public class GrappleAbility {
         activeHooks.put(player.getUniqueId(), hook);
         player.playSound(player.getLocation(), Sound.ENTITY_FISHING_BOBBER_THROW, 1.0f, 1.0f);
 
-        // Schedule a task to modify the velocity 1 tick later to override default behavior
+        // Schedule a task to modify the velocity 1 tick later to override default
+        // behavior
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             if (hook.isValid()) { // Make sure the hook still exists
                 // Cap the speed to prevent the hook from becoming too fast and disappearing
@@ -63,7 +64,41 @@ public class GrappleAbility {
         FishHook hook = activeHooks.get(player.getUniqueId());
         if (hook != null && hook.isValid()) {
 
-            if (groundedHooks.contains(hook)) {
+            boolean isGrounded = false;
+            Location loc = hook.getLocation();
+
+            // Modified Scan: Check 1.5 blocks vertically down (Ground) AND up (Ceiling)
+            boolean foundSolidSurface = false;
+
+            // Check Ground (Down)
+            for (double y = 0; y >= -1.5; y -= 0.5) {
+                if (loc.clone().add(0, y, 0).getBlock().getType().isSolid()) {
+                    foundSolidSurface = true;
+                    break;
+                }
+            }
+
+            // Check Ceiling (Up)
+            if (!foundSolidSurface) {
+                for (double y = 0; y <= 1.5; y += 0.5) {
+                    if (loc.clone().add(0, y, 0).getBlock().getType().isSolid()) {
+                        foundSolidSurface = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!foundSolidSurface) {
+                hook.remove();
+                activeHooks.remove(player.getUniqueId());
+                groundedHooks.remove(hook);
+                return;
+            }
+
+            // If near valid surface, isGrounded true
+            isGrounded = true;
+
+            if (isGrounded) {
                 // Check restrictions
                 if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.SLOWNESS)) {
                     player.sendMessage("§cYou cannot use the Grapple while you have Slowness!");
@@ -95,8 +130,7 @@ public class GrappleAbility {
                 player.setVelocity(player.getVelocity().add(pullVector.multiply(pullStrength)));
                 player.playSound(player.getLocation(), Sound.ENTITY_FISHING_BOBBER_RETRIEVE, 1.0f, 1.0f);
 
-                consumeDurability(grappleItem);
-
+                // consumeDurability(grappleItem); // Durability disabled by user request
             } else if (hook.isInWater()) {
                 player.sendMessage("§cThe hook cannot be floating on water!");
             }
@@ -104,7 +138,8 @@ public class GrappleAbility {
             activeHooks.remove(player.getUniqueId());
             groundedHooks.remove(hook);
         } else {
-            // If the hook is no longer valid, it means it was removed by vanilla or despawned.
+            // If the hook is no longer valid, it means it was removed by vanilla or
+            // despawned.
             // We need to clean up our internal state.
             activeHooks.remove(player.getUniqueId());
             // Remove any invalid hooks from groundedHooks as well
@@ -131,19 +166,4 @@ public class GrappleAbility {
         return activeHooks.containsKey(player.getUniqueId());
     }
 
-    private void consumeDurability(ItemStack grappleItem) {
-        if (grappleItem == null || grappleItem.getType() != Material.FISHING_ROD) {
-            return;
-        }
-
-        if (ThreadLocalRandom.current().nextDouble() < plugin.getGrappleDurabilityLossChance()) {
-            if (grappleItem.getDurability() < grappleItem.getType().getMaxDurability()) {
-                grappleItem.setDurability((short) (grappleItem.getDurability() + 1));
-            } else {
-                player.getInventory().removeItem(grappleItem);
-                player.sendMessage("§cYour Grapple has broken!");
-                player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1.0f, 1.0f);
-            }
-        }
-    }
 }

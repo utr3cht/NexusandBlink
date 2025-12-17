@@ -31,7 +31,7 @@ public class SbRankGUI implements InventoryHolder, Listener {
     }
 
     public void open(Player player) {
-        inventory = Bukkit.createInventory(this, 9, ChatColor.DARK_PURPLE + "Select Display Rank");
+        inventory = Bukkit.createInventory(this, 36, ChatColor.DARK_PURPLE + "Select Display Rank");
 
         Rank currentRealRank = plugin.getRankManager().getRank(player);
         if (currentRealRank == null) {

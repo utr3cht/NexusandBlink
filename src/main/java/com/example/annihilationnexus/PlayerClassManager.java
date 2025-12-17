@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.Set;
+import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PlayerClassManager {
@@ -28,6 +30,7 @@ public class PlayerClassManager {
     private final Map<UUID, SpyAbility> spyAbilities = new HashMap<>();
     private final Map<UUID, TransporterAbility> transporterAbilities = new HashMap<>();
     private final Map<UUID, FarmerAbility> farmerAbilities = new HashMap<>();
+    private final Map<UUID, RiftWalkerAbility> riftWalkerAbilities = new HashMap<>();
     private final Set<UUID> postDeathPortalCooldown = ConcurrentHashMap.newKeySet(); // New field
     private File classesFile;
     private FileConfiguration classesConfig;
@@ -96,6 +99,10 @@ public class PlayerClassManager {
         givePlayerItem(player, plugin.getFamineItem());
     }
 
+    private void addRiftWalkerItem(Player player) {
+        givePlayerItem(player, plugin.getRiftWalkerItem());
+    }
+
     public void setPlayerClass(UUID playerId, String className) {
         String previousClass = playerClasses.get(playerId);
 
@@ -145,11 +152,16 @@ public class PlayerClassManager {
             spyAbilities.put(playerId, new SpyAbility(player, plugin));
             addSpyItem(player);
         } else if (className.equalsIgnoreCase("transporter")) {
-            transporterAbilities.put(playerId, new TransporterAbility(plugin));
+            TransporterAbility ability = new TransporterAbility(plugin);
+            transporterAbilities.put(playerId, ability);
             addTransporterItem(player);
+            ability.restoreParticleEffects(player);
         } else if (className.equalsIgnoreCase("farmer")) {
             farmerAbilities.put(playerId, new FarmerAbility(plugin));
             addFarmerItems(player);
+        } else if (className.equalsIgnoreCase("riftwalker")) {
+            riftWalkerAbilities.put(playerId, new RiftWalkerAbility(plugin));
+            addRiftWalkerItem(player);
         }
     }
 
@@ -186,15 +198,63 @@ public class PlayerClassManager {
         return farmerAbilities.get(playerId);
     }
 
+    public RiftWalkerAbility getRiftWalkerAbility(UUID playerId) {
+        return riftWalkerAbilities.get(playerId);
+    }
+
+    private final Map<UUID, Set<String>> unlockedClasses = new HashMap<>(); // New field
+    private final Set<String> bannedClasses = new HashSet<>(); // New field for banned classes
+
+    public void banClass(String className) {
+        bannedClasses.add(className.toLowerCase());
+        saveClasses();
+    }
+
+    public void unbanClass(String className) {
+        bannedClasses.remove(className.toLowerCase());
+        saveClasses();
+    }
+
+    public boolean isClassBanned(String className) {
+        return bannedClasses.contains(className.toLowerCase());
+    }
+
     public void loadClasses() {
         if (!classesFile.exists()) {
             return;
         }
         classesConfig = YamlConfiguration.loadConfiguration(classesFile);
         for (String uuidString : classesConfig.getKeys(false)) {
-            UUID uuid = UUID.fromString(uuidString);
-            String className = classesConfig.getString(uuidString);
-            playerClasses.put(uuid, className);
+            if (uuidString.equals("unlocked-classes"))
+                continue; // Skip the special section
+
+            try {
+                UUID uuid = UUID.fromString(uuidString);
+                String className = classesConfig.getString(uuidString);
+                playerClasses.put(uuid, className);
+            } catch (IllegalArgumentException e) {
+                // Ignore invalid UUIDs (like "unlocked-classes" if it was at root, but we
+                // handle it separately)
+            }
+        }
+
+        // Load unlocked classes
+        if (classesConfig.contains("unlocked-classes")) {
+            for (String uuidString : classesConfig.getConfigurationSection("unlocked-classes").getKeys(false)) {
+                try {
+                    UUID uuid = UUID.fromString(uuidString);
+                    List<String> unlocked = classesConfig.getStringList("unlocked-classes." + uuidString);
+                    unlockedClasses.put(uuid, new HashSet<>(unlocked));
+                } catch (IllegalArgumentException e) {
+                    plugin.getLogger().warning("Invalid UUID in unlocked-classes: " + uuidString);
+                }
+            }
+        }
+
+        // Load banned classes
+        if (classesConfig.contains("banned-classes")) {
+            bannedClasses.clear();
+            bannedClasses.addAll(classesConfig.getStringList("banned-classes"));
         }
     }
 
@@ -207,12 +267,47 @@ public class PlayerClassManager {
         for (Map.Entry<UUID, String> entry : playerClasses.entrySet()) {
             classesConfig.set(entry.getKey().toString(), entry.getValue());
         }
+
+        // Save unlocked classes
+        for (Map.Entry<UUID, Set<String>> entry : unlockedClasses.entrySet()) {
+            classesConfig.set("unlocked-classes." + entry.getKey().toString(), new ArrayList<>(entry.getValue()));
+        }
+
+        // Save banned classes
+        classesConfig.set("banned-classes", new ArrayList<>(bannedClasses));
+
         try {
             classesConfig.save(classesFile);
         } catch (IOException e) {
             plugin.getLogger().severe("Could not save classes.yml!");
             e.printStackTrace();
         }
+    }
+
+    public void unlockClass(UUID playerId, String className) {
+        unlockedClasses.computeIfAbsent(playerId, k -> new HashSet<>()).add(className.toLowerCase());
+        saveClasses();
+    }
+
+    public boolean isClassUnlocked(UUID playerId, String className) {
+        // Default classes (if any) should be checked here.
+        // For now, assume all listed classes need unlocking, or maybe "civilian" is
+        // free if we had it.
+        // Let's assume all classes in the GUI need unlocking.
+        // Wait, usually there is a free class. Let's make "Civilian" free if it exists,
+        // but it's not in the list.
+        // Let's assume "Handyman" or similar is default.
+        // For this request, I will just check the map.
+        // However, we should probably check if the cost is 0 in config, implying free.
+        if (getClassCost(className) <= 0)
+            return true;
+
+        Set<String> unlocked = unlockedClasses.get(playerId);
+        return unlocked != null && unlocked.contains(className.toLowerCase());
+    }
+
+    public int getClassCost(String className) {
+        return plugin.getConfig().getInt("class-costs." + className.toLowerCase(), 0);
     }
 
     public void addPlayer(Player player) {
@@ -241,11 +336,16 @@ public class PlayerClassManager {
                 spyAbilities.put(player.getUniqueId(), new SpyAbility(player, plugin));
                 addSpyItem(player);
             } else if (className.equalsIgnoreCase("transporter")) {
-                transporterAbilities.put(player.getUniqueId(), new TransporterAbility(plugin));
+                TransporterAbility ability = new TransporterAbility(plugin);
+                transporterAbilities.put(player.getUniqueId(), ability);
                 addTransporterItem(player);
+                ability.restoreParticleEffects(player);
             } else if (className.equalsIgnoreCase("farmer")) {
                 farmerAbilities.put(player.getUniqueId(), new FarmerAbility(plugin));
                 addFarmerItems(player);
+            } else if (className.equalsIgnoreCase("riftwalker")) {
+                riftWalkerAbilities.put(player.getUniqueId(), new RiftWalkerAbility(plugin));
+                addRiftWalkerItem(player);
             }
         }
     }
@@ -258,6 +358,7 @@ public class PlayerClassManager {
         spyAbilities.remove(playerId);
         transporterAbilities.remove(playerId);
         farmerAbilities.remove(playerId);
+        riftWalkerAbilities.remove(playerId);
         // We don't remove from playerClasses map, as we want to persist it
     }
 
@@ -276,6 +377,6 @@ public class PlayerClassManager {
 
     // New method for tab completion
     public List<String> getAllClassNames() {
-        return Arrays.asList("dasher", "scout", "scorpio", "assassin", "spy", "transporter", "farmer");
+        return Arrays.asList("dasher", "scout", "scorpio", "assassin", "spy", "transporter", "farmer", "riftwalker");
     }
 }

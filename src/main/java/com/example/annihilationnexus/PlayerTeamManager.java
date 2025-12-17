@@ -64,4 +64,14 @@ public class PlayerTeamManager {
     public String getPlayerTeam(UUID playerUUID) {
         return playerTeams.get(playerUUID);
     }
+
+    public java.util.Set<UUID> getTeamPlayers(String teamName) {
+        java.util.Set<UUID> teamMembers = new java.util.HashSet<>();
+        for (Map.Entry<UUID, String> entry : playerTeams.entrySet()) {
+            if (entry.getValue().equalsIgnoreCase(teamName)) {
+                teamMembers.add(entry.getKey());
+            }
+        }
+        return teamMembers;
+    }
 }

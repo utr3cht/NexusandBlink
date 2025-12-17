@@ -42,7 +42,7 @@ public class ScoreboardManager {
 
     public void updatePlayerPrefix(Player player) {
         Rank rank = rankManager.getDisplayRank(player);
-        String prefix = rank.getPrefix();
+        String prefix = (rank != null) ? rank.getPrefix() : "";
         String teamName = playerTeamManager.getPlayerTeam(player.getUniqueId());
         ChatColor teamColor = (teamName != null) ? getTeamColor(teamName) : ChatColor.WHITE;
 
@@ -96,18 +96,33 @@ public class ScoreboardManager {
         Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
         Objective objective = scoreboard.getObjective("annihilation");
 
-        // Unregister old objective to clear lines cleanly without affecting other
-        // objectives (like deaths)
-        if (objective != null) {
-            objective.unregister();
+        if (objective == null) {
+            String title = ChatColor.translateAlternateColorCodes('&',
+                    scoreboardConfig.getString("title", "&e&lAnnihilation"));
+            objective = scoreboard.registerNewObjective("annihilation", "dummy", title);
+            objective.setDisplaySlot(DisplaySlot.SIDEBAR);
         }
 
-        String title = ChatColor.translateAlternateColorCodes('&',
-                scoreboardConfig.getString("title", "&e&lAnnihilation"));
-        objective = scoreboard.registerNewObjective("annihilation", "dummy", title);
-        objective.setDisplaySlot(DisplaySlot.SIDEBAR);
-
         List<String> lines = scoreboardConfig.getStringList("lines");
+        // We need to clear existing scores to prevent duplicates if lines change
+        // dynamically
+        // However, clearing all scores causes flickering.
+        // A common strategy is to use unique entries (colors) and update their scores.
+        // For simplicity and to fix the immediate lag caused by unregistering, we will
+        // just reset scores for entries that are no longer in the list?
+        // Actually, the simplest fix for "unregistering causes lag" is to NOT
+        // unregister.
+        // But if we don't unregister, old lines remain.
+        // So we must remove old entries.
+
+        // Better approach:
+        // 1. Get all current entries in the objective.
+        // 2. Calculate new entries.
+        // 3. Remove entries that are in (1) but not in (2).
+        // 4. Set scores for (2).
+
+        Set<String> newEntries = new HashSet<>();
+
         int score = lines.size();
         for (String line : lines) {
             line = ChatColor.translateAlternateColorCodes('&', line);
@@ -131,14 +146,39 @@ public class ScoreboardManager {
                     ChatColor teamColor = getTeamColor(teamName);
                     String status = nexus.isDestroyed() ? ChatColor.RED + "DESTROYED"
                             : ChatColor.GREEN + "" + nexus.getHealth();
-                    objective.getScore(teamColor + teamName + ": " + status).setScore(score--);
+                    String entryName = teamColor + teamName + ": " + status;
+
+                    // Handle duplicates if any (unlikely for nexus status)
+                    while (newEntries.contains(entryName)) {
+                        entryName += ChatColor.RESET;
+                    }
+
+                    objective.getScore(entryName).setScore(score--);
+                    newEntries.add(entryName);
                 }
             } else {
                 // To handle duplicate lines, add invisible color codes
-                while (scoreboard.getEntries().contains(line)) {
-                    line += ChatColor.RESET;
+                while (newEntries.contains(line)
+                        || scoreboard.getEntries().contains(line) && !newEntries.contains(line)) {
+                    // Wait, checking scoreboard.getEntries() is global. We only care about this
+                    // objective?
+                    // Actually, getScore(line) creates an entry.
+                    // We just need to ensure unique strings for this update cycle.
+                    if (newEntries.contains(line)) {
+                        line += ChatColor.RESET;
+                    } else {
+                        break;
+                    }
                 }
                 objective.getScore(line).setScore(score--);
+                newEntries.add(line);
+            }
+        }
+
+        // Remove entries that are no longer present
+        for (String entry : scoreboard.getEntries()) {
+            if (objective.getScore(entry).isScoreSet() && !newEntries.contains(entry)) {
+                scoreboard.resetScores(entry);
             }
         }
     }
@@ -219,8 +259,8 @@ public class ScoreboardManager {
         team.setColor(color);
 
         // Capitalize team name for display
-        String displayName = teamName.substring(0, 1).toUpperCase() + teamName.substring(1).toLowerCase();
-        team.setPrefix(ChatColor.WHITE + "[" + color + displayName + ChatColor.WHITE + "] " + color);
+        String initial = teamName.substring(0, 1).toUpperCase();
+        team.setPrefix(ChatColor.WHITE + "[" + color + initial + ChatColor.WHITE + "] " + color);
 
         boolean ffEnabled = plugin.isFriendlyFireEnabled();
         team.setAllowFriendlyFire(ffEnabled); // Standard for Annihilation
@@ -350,5 +390,29 @@ public class ScoreboardManager {
 
         // Refresh all scoreboards to show changes (e.g., nexus status color)
         updateForAllPlayers();
+    }
+
+    private boolean updatePending = false;
+
+    public void requestUpdate() {
+        if (updatePending) {
+            return;
+        }
+        updatePending = true;
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            updateForAllPlayers();
+            updatePending = false;
+        });
+    }
+
+    public void initializeTeams() {
+        Scoreboard mainSb = Bukkit.getScoreboardManager().getMainScoreboard();
+        for (String teamName : nexusManager.getAllNexuses().keySet()) {
+            Team team = mainSb.getTeam(teamName);
+            if (team == null) {
+                team = mainSb.registerNewTeam(teamName);
+            }
+            configureTeam(team, teamName);
+        }
     }
 }

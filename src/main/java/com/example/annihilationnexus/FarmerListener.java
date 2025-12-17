@@ -23,6 +23,8 @@ import org.bukkit.scoreboard.Team;
 
 import java.util.Random;
 import java.util.UUID;
+import java.util.Set;
+import java.util.EnumSet;
 
 public class FarmerListener implements Listener {
 
@@ -31,7 +33,17 @@ public class FarmerListener implements Listener {
     private final ProtectedCropManager protectedCropManager;
     private final Random random = new Random();
 
-    public FarmerListener(AnnihilationNexus plugin, PlayerClassManager playerClassManager, ProtectedCropManager protectedCropManager) {
+    private static final Set<Material> ALLOWED_CROPS = EnumSet.of(
+            Material.WHEAT,
+            Material.CARROTS,
+            Material.POTATOES,
+            Material.BEETROOTS,
+            Material.NETHER_WART,
+            Material.MELON,
+            Material.PUMPKIN);
+
+    public FarmerListener(AnnihilationNexus plugin, PlayerClassManager playerClassManager,
+            ProtectedCropManager protectedCropManager) {
         this.plugin = plugin;
         this.playerClassManager = playerClassManager;
         this.protectedCropManager = protectedCropManager;
@@ -58,10 +70,12 @@ public class FarmerListener implements Listener {
         Action action = event.getAction();
         if (action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK) {
             ItemStack item = event.getItem();
-            if (item == null) return;
+            if (item == null)
+                return;
 
             FarmerAbility ability = playerClassManager.getFarmerAbility(player.getUniqueId());
-            if (ability == null) return;
+            if (ability == null)
+                return;
 
             if (plugin.isFeastItem(item)) {
                 ability.useFeast(player);
@@ -79,17 +93,29 @@ public class FarmerListener implements Listener {
         Block block = event.getBlock();
         Location blockLocation = block.getLocation();
 
+        // --- Farmland Protection Check ---
+        if (block.getType() == Material.FARMLAND) {
+            Block blockAbove = block.getRelative(0, 1, 0);
+            if (protectedCropManager.isProtected(blockAbove.getLocation())) {
+                event.setCancelled(true);
+                player.sendMessage(ChatColor.RED + "You cannot break the soil under a protected crop!");
+                return;
+            }
+        }
+        // --- End Farmland Protection Check ---
+
         // --- Crop Protection Check ---
         if (protectedCropManager.isProtected(blockLocation)) {
             ProtectedCropInfo cropInfo = protectedCropManager.getCropInfo(blockLocation);
-            if (cropInfo == null) { // Should not happen, but good practice
+            if (cropInfo == null) {
                 return;
             }
 
             UUID planterUUID = cropInfo.getPlanterUUID();
             UUID breakerUUID = player.getUniqueId();
 
-            // Planter can always break their own crops, so we only check if it's someone else
+            // Planter can always break their own crops, so we only check if it's someone
+            // else
             if (!planterUUID.equals(breakerUUID)) {
                 Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
                 Team planterTeam = scoreboard.getEntryTeam(Bukkit.getOfflinePlayer(planterUUID).getName());
@@ -102,13 +128,15 @@ public class FarmerListener implements Listener {
                         Ageable ageable = (Ageable) block.getBlockData();
                         if (ageable.getAge() < ageable.getMaximumAge()) {
                             event.setCancelled(true);
-                            player.sendMessage(ChatColor.RED + "This crop is still growing and cannot be broken by teammates.");
+                            player.sendMessage(
+                                    ChatColor.RED + "This crop is still growing and cannot be broken by teammates.");
                             return;
                         }
                     }
                 } else {
                     // Enemy teams can always break protected crops.
-                    // We remove the protection so it doesn't get auto-replanted by the original farmer's logic.
+                    // We remove the protection so it doesn't get auto-replanted by the original
+                    // farmer's logic.
                     protectedCropManager.removeCrop(blockLocation);
                 }
             }
@@ -124,10 +152,14 @@ public class FarmerListener implements Listener {
 
         // Handle Crop Breaking
         if (block.getBlockData() instanceof Ageable) {
+            // Fix: Check if it is an allowed crop
+            if (!ALLOWED_CROPS.contains(type)) {
+                return;
+            }
+
             Ageable ageable = (Ageable) block.getBlockData();
             if (ageable.getAge() == ageable.getMaximumAge()) {
                 // It's a fully grown crop. Remove any existing protection before replanting.
-                // This ensures the growth task is cancelled and can be restarted for the new crop.
                 if (protectedCropManager.isProtected(blockLocation)) {
                     protectedCropManager.removeCrop(blockLocation);
                 }
@@ -137,17 +169,31 @@ public class FarmerListener implements Listener {
                     @Override
                     public void run() {
                         Block blockBelow = block.getRelative(0, -1, 0);
-                        if (blockBelow.getType() != Material.FARMLAND) {
-                            blockBelow.setType(Material.FARMLAND);
+
+                        // Special handling for Nether Wart
+                        if (type == Material.NETHER_WART) {
+                            if (blockBelow.getType() != Material.SOUL_SAND) {
+                                blockBelow.setType(Material.SOUL_SAND);
+                            }
+                        } else {
+                            // Default to Farmland for other crops
+                            if (blockBelow.getType() != Material.FARMLAND) {
+                                blockBelow.setType(Material.FARMLAND);
+                            }
+                            // Only set moisture if it is farmland
+                            if (blockBelow.getType() == Material.FARMLAND) {
+                                Farmland farmland = (Farmland) blockBelow.getBlockData();
+                                farmland.setMoisture(farmland.getMaximumMoisture());
+                                blockBelow.setBlockData(farmland);
+                            }
                         }
-                        Farmland farmland = (Farmland) blockBelow.getBlockData();
-                        farmland.setMoisture(farmland.getMaximumMoisture());
-                        blockBelow.setBlockData(farmland);
 
                         block.setType(type);
-                        Ageable newCrop = (Ageable) block.getBlockData();
-                        newCrop.setAge(0); // Set age to 0 for natural growth
-                        block.setBlockData(newCrop);
+                        if (block.getBlockData() instanceof Ageable) {
+                            Ageable newCrop = (Ageable) block.getBlockData();
+                            newCrop.setAge(0); // Set age to 0 for natural growth
+                            block.setBlockData(newCrop);
+                        }
 
                         // Add to protected crops after replanting
                         protectedCropManager.addCrop(blockLocation, player.getUniqueId());
@@ -203,7 +249,8 @@ public class FarmerListener implements Listener {
 
         if (event.getItem().getType().isEdible()) {
             if (random.nextDouble() < plugin.getEatingBonusChance()) {
-                double newHealth = Math.min(player.getHealth() + plugin.getEatingBonusExtraHealth(), player.getMaxHealth());
+                double newHealth = Math.min(player.getHealth() + plugin.getEatingBonusExtraHealth(),
+                        player.getMaxHealth());
                 player.setHealth(newHealth);
                 player.setFoodLevel(Math.min(player.getFoodLevel() + plugin.getEatingBonusExtraFood(), 20));
             }

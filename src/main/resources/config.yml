@@ -175,3 +175,13 @@ achievements:
 
 gameplay:
   friendly-fire: false
+
+class-costs:
+  dasher: 250
+  scout: 250
+  scorpio: 250
+  assassin: 250
+  spy: 250
+  transporter: 250
+  farmer: 250
+  riftwalker: 1000

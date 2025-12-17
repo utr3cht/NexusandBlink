@@ -14,6 +14,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.util.Vector;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -26,6 +27,8 @@ public class LauncherPadListener implements Listener {
         this.plugin = plugin;
     }
 
+    private final Map<UUID, Long> launchCooldowns = new java.util.HashMap<>();
+
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.PHYSICAL) {
@@ -37,6 +40,45 @@ public class LauncherPadListener implements Listener {
             return;
         }
 
+        handleLaunch(event.getPlayer(), block);
+    }
+
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        UUID playerUUID = player.getUniqueId();
+
+        // Check for launch (Optimized: only if block changed)
+        if (event.getFrom().getBlockX() != event.getTo().getBlockX() ||
+                event.getFrom().getBlockY() != event.getTo().getBlockY() ||
+                event.getFrom().getBlockZ() != event.getTo().getBlockZ()) {
+
+            Block block = event.getTo().getBlock();
+            if (block.getType() == Material.STONE_PRESSURE_PLATE) {
+                handleLaunch(player, block);
+            }
+        }
+
+        if (!launchedPlayers.contains(playerUUID)) {
+            return;
+        }
+
+        // Check if the player has landed
+        if (player.isOnGround()) {
+            // Remove from launched players to prevent this from running again
+            launchedPlayers.remove(playerUUID);
+
+            // Add to the main no-fall set, which handles the 1-second grace period after
+            // landing
+            plugin.getNoFall().add(playerUUID);
+        }
+    }
+
+    private void handleLaunch(Player player, Block block) {
+        if (System.currentTimeMillis() - launchCooldowns.getOrDefault(player.getUniqueId(), 0L) < 500) {
+            return;
+        }
+
         Block blockBelow = block.getRelative(0, -1, 0);
         Material belowType = blockBelow.getType();
 
@@ -45,7 +87,6 @@ public class LauncherPadListener implements Listener {
             return;
         }
 
-        Player player = event.getPlayer();
         Vector direction;
         double launchPower;
         Sound launchSound;
@@ -69,32 +110,14 @@ public class LauncherPadListener implements Listener {
             launchSound = Sound.ENTITY_SLIME_JUMP;
             direction = new Vector(0, 1, 0);
         } else {
-            return; // Should not happen due to the check above, but as a safeguard.
+            return;
         }
 
         player.getWorld().playSound(player.getLocation(), launchSound, 1, 1);
         player.setVelocity(direction.multiply(launchPower));
 
         launchedPlayers.add(player.getUniqueId()); // Mark player as launched
-    }
-
-    @EventHandler
-    public void onPlayerMove(PlayerMoveEvent event) {
-        Player player = event.getPlayer();
-        UUID playerUUID = player.getUniqueId();
-
-        if (!launchedPlayers.contains(playerUUID)) {
-            return;
-        }
-
-        // Check if the player has landed
-        if (player.isOnGround()) {
-            // Remove from launched players to prevent this from running again
-            launchedPlayers.remove(playerUUID);
-            
-            // Add to the main no-fall set, which handles the 1-second grace period after landing
-            plugin.getNoFall().add(playerUUID);
-        }
+        launchCooldowns.put(player.getUniqueId(), System.currentTimeMillis());
     }
 
     @EventHandler
@@ -104,7 +127,8 @@ public class LauncherPadListener implements Listener {
         }
 
         if (event.getCause() == EntityDamageEvent.DamageCause.FALL) {
-            // If the player was launched OR is in the post-landing grace period, cancel the damage.
+            // If the player was launched OR is in the post-landing grace period, cancel the
+            // damage.
             if (launchedPlayers.contains(player.getUniqueId()) || plugin.getNoFall().contains(player.getUniqueId())) {
                 event.setCancelled(true);
             }

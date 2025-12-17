@@ -37,6 +37,15 @@ commands:
   sbrank:
     description: Open GUI to change display rank prefix
     usage: /sbrank
+  clan:
+    description: Manage clans
+    usage: /clan <create|invite|join|view|leave>
+  rank:
+    description: Shows your rank progress
+    usage: /rank
+  ranking:
+    description: Shows the XP leaderboard
+    usage: /ranking [page]
 
 permissions:
   annihilation.admin:
